@@ -198,6 +198,6 @@ jobs:
           provenance: true
           file: .github/deployment/node/Dockerfile
           tags: |
-            ghcr.io/${{ github.repository_owner }}/mosaic:${{inputs.build-type}}-${{ inputs.git-short-hash }}
-            ghcr.io/${{ github.repository_owner }}/mosaic:${{inputs.build-type}}
-            ghcr.io/${{ github.repository_owner }}/mosaic:latest
+            ghcr.io/${{ github.repository_owner }}/mosaic-aio:${{inputs.build-type}}-${{ inputs.git-short-hash }}
+            ghcr.io/${{ github.repository_owner }}/mosaic-aio:${{inputs.build-type}}
+            ghcr.io/${{ github.repository_owner }}/mosaic-aio:latest
