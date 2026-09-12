@@ -1,5 +1,8 @@
 name: 'Pull Request Labeler'
+
+# Manual / optional on Mosaic — labeler rules target AFFiNE labels.
 on:
+  workflow_dispatch:
   pull_request_target:
     types:
       - opened
@@ -8,10 +11,11 @@ on:
 
 jobs:
   triage:
+    if: github.repository_owner == 'toeverything'
     permissions:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/labeler@v7
+      - uses: actions/checkout@v4
+      - uses: actions/labeler@v5

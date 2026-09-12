@@ -1,9 +1,7 @@
 name: Release
 
+# Manual only on Mosaic — daily canary release is AFFiNE upstream behavior.
 on:
-  schedule:
-    - cron: '0 9 * * *'
-
   workflow_dispatch:
     inputs:
       web:

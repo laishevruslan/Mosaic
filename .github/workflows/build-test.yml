@@ -1,6 +1,9 @@
 name: Build & Test
 
+# Upstream AFFiNE monorepo CI. Mosaic uses mosaic-server.yml / build-dev-image.yml.
+# Kept for manual runs only so PRs to main are not blocked by missing ARM runners/secrets.
 on:
+  workflow_dispatch:
   push:
     branches:
       - canary
@@ -10,8 +13,6 @@ on:
       - v[0-9]+.[0-9]+.x
     paths-ignore:
       - README.md
-  pull_request:
-  merge_group:
 
 env:
   DEBUG: napi:*

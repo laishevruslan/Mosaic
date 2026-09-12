@@ -1,11 +1,7 @@
 name: Copilot Test Automatically
 
+# Manual only on Mosaic — scheduled copilot tests need AFFiNE secrets/infra.
 on:
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+-canary.[0-9]+'
-  schedule:
-    - cron: '0 8 * * *'
   workflow_dispatch:
 
 permissions:

@@ -22,7 +22,6 @@ jobs:
   build-web:
     name: Build @affine/web
     runs-on: ubuntu-latest
-    environment: ${{ inputs.build-type }}
     steps:
       - uses: actions/checkout@v7
       - name: Setup Version
@@ -55,7 +54,6 @@ jobs:
   build-admin:
     name: Build @affine/admin
     runs-on: ubuntu-latest
-    environment: ${{ inputs.build-type }}
     steps:
       - uses: actions/checkout@v7
       - name: Setup Version
@@ -87,7 +85,6 @@ jobs:
   build-mobile:
     name: Build @affine/mobile
     runs-on: ubuntu-latest
-    environment: ${{ inputs.build-type }}
     steps:
       - uses: actions/checkout@v7
       - name: Setup Version
@@ -201,5 +198,6 @@ jobs:
           provenance: true
           file: .github/deployment/node/Dockerfile
           tags: |
-            ghcr.io/toeverything/affine:${{inputs.build-type}}-${{ inputs.git-short-hash }}
             ghcr.io/${{ github.repository_owner }}/mosaic:${{inputs.build-type}}-${{ inputs.git-short-hash }}
+            ghcr.io/${{ github.repository_owner }}/mosaic:${{inputs.build-type}}
+            ghcr.io/${{ github.repository_owner }}/mosaic:latest
