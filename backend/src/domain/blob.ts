@@ -59,8 +59,26 @@ export interface DocHistoryRecord {
   editorId: string | null;
 }
 
+/**
+ * Accept keys the MIT client actually sends without dropping path-safety checks.
+ *
+ * BlockSuite `sha()` returns base64(SHA-256) with `+/` → `-_`, but keeps RFC 4648
+ * `=` padding. Upstream AFFiNE does not regex-validate keys; we still reject `/`,
+ * `\\`, and `..` so object-store paths cannot escape the workspace prefix.
+ */
 export function isBlobKey(value: string): boolean {
-  return /^[A-Za-z0-9._-]{1,256}$/.test(value);
+  if (typeof value !== 'string' || value.length < 1 || value.length > 256) {
+    return false;
+  }
+  if (
+    value.includes('/') ||
+    value.includes('\\') ||
+    value.includes('..')
+  ) {
+    return false;
+  }
+  // body: base64url / hex / simple test keys; optional `=` padding at end only
+  return /^[A-Za-z0-9._-]+={0,2}$/.test(value);
 }
 
 export function parseSourceType(value: string | undefined): BlobSourceType {

@@ -120,6 +120,51 @@ describe('Phase 1 — Auth', () => {
     expect(session.json()).toEqual({ user: null });
   });
 
+  it('resolves publicUserById like upstream AFFiNE', async () => {
+    const { app } = await startTestApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in',
+      headers: { 'content-type': 'application/json' },
+      payload: { email: 'public@example.com', password: 'correcthorse' },
+    });
+    expect(res.statusCode).toBe(200);
+    const user = res.json() as { id: string; name: string };
+    const cookies = cookieHeader(res);
+
+    const found = await gql(
+      app,
+      `query getPublicUserById($id: String!) {
+        publicUserById(id: $id) { id name avatarUrl }
+      }`,
+      { cookies, variables: { id: user.id }, op: 'getPublicUserById' }
+    );
+    expect(found.json()).toMatchObject({
+      data: {
+        publicUserById: {
+          id: user.id,
+          name: user.name,
+          avatarUrl: null,
+        },
+      },
+    });
+
+    const missing = await gql(
+      app,
+      `query getPublicUserById($id: String!) {
+        publicUserById(id: $id) { id name avatarUrl }
+      }`,
+      {
+        cookies,
+        variables: { id: '00000000-0000-4000-8000-000000000000' },
+        op: 'getPublicUserById',
+      }
+    );
+    expect(missing.json()).toMatchObject({
+      data: { publicUserById: null },
+    });
+  });
+
   it('creates the first user as Admin via setup', async () => {
     const { app } = await startTestApp();
     const res = await app.inject({

@@ -193,6 +193,7 @@ const typeDefs = /* GraphQL */ `
     workspace(id: String!): WorkspaceType
     appConfig: JSON
     user(email: String!): UserType
+    publicUserById(id: String!): PublicUserType
   }
 
   type Mutation {
@@ -442,6 +443,21 @@ export const graphqlPlugin = fp<{
           },
           user: async (_root: unknown, _args: { email: string }) => {
             throw toGraphQLError(errors.accessDenied());
+          },
+          publicUserById: async (_root: unknown, args: { id: string }) => {
+            try {
+              const user = await opts.auth.getUserById(args.id);
+              if (!user) {
+                return null;
+              }
+              return {
+                id: user.id,
+                name: user.name,
+                avatarUrl: user.avatarUrl,
+              };
+            } catch (error) {
+              throw toGraphQLError(error);
+            }
           },
           ...members.Query,
           ...platform.Query,

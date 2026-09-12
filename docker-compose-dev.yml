@@ -4,11 +4,8 @@
 name: mosaic
 
 services:
-  mosaic:
-    build:
-      context: .
-      dockerfile: Dockerfile.from-source
-    image: mosaic:local
+  mosaic:    
+    image: ghcr.io/laishevruslan/mosaic-aio:main-79dac1d9e509a5c3da997be21a3dd05161172886
     container_name: mosaic_server
     ports:
       - '${PORT:-3010}:3010'

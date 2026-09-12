@@ -118,6 +118,33 @@ describe('Phase 3 — Blobs + Doc meta', () => {
     expect(body.name).toBe('AUTHENTICATION_REQUIRED');
   });
 
+  it('uploads via createBlobUpload with BlockSuite base64url+padding key', async () => {
+    const { app } = await startTestApp();
+    const cookies = await signIn(app, 'blob-b64@example.com');
+    const spaceId = await createWorkspace(app, cookies);
+    // BlockSuite sha() keeps `=` padding after +/→-_ rewrite
+    const key = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+    const created = await gql(
+      app,
+      cookies,
+      CREATE_UPLOAD,
+      {
+        workspaceId: spaceId,
+        key,
+        size: PNG.byteLength,
+        mime: 'application/octet-stream',
+      },
+      'createBlobUpload'
+    );
+    const init = created.json() as {
+      data?: { createBlobUpload: { method: string; blobKey: string } };
+      errors?: unknown[];
+    };
+    expect(init.errors).toBeUndefined();
+    expect(init.data?.createBlobUpload.method).toBe('PRESIGNED');
+    expect(init.data?.createBlobUpload.blobKey).toBe(key);
+  });
+
   it('uploads a chart/sketch PNG via presigned PUT and serves it', async () => {
     const { app } = await startTestApp();
     const cookies = await signIn(app, 'blob@example.com');
