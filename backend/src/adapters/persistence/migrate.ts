@@ -27,6 +27,11 @@ const e3Sql = readFileSync(
   'utf8'
 );
 
+const e4Sql = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'migrations', '010_e4.sql'),
+  'utf8'
+);
+
 const MIGRATIONS = [
   { id: '001_identity', sql: IDENTITY_MIGRATION_SQL },
   { id: '002_docs', sql: DOCS_MIGRATION_SQL },
@@ -37,6 +42,7 @@ const MIGRATIONS = [
   { id: '007_e0', sql: e0Sql },
   { id: '008_e2', sql: e2Sql },
   { id: '009_e3', sql: e3Sql },
+  { id: '010_e4', sql: e4Sql },
 ];
 
 export async function applyMigrations(sql: postgres.Sql): Promise<void> {

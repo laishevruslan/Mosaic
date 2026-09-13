@@ -13,6 +13,9 @@ export interface HttpMetrics {
   syncLagMs: Gauge<string>;
   updateSizeBytes: Histogram<string>;
   errorRate: Gauge<string>;
+  indexDocsTotal: Gauge<string>;
+  indexLagSeconds: Gauge<string>;
+  searchDuration: Histogram<string>;
 }
 
 export function createMetrics(
@@ -62,6 +65,27 @@ export function createMetrics(
   });
   errorRate.set(0);
 
+  const indexDocsTotal = new Gauge({
+    name: 'mosaic_index_docs_total',
+    help: 'Documents currently in the full-text index',
+    registers: [registry],
+  });
+  indexDocsTotal.set(0);
+
+  const indexLagSeconds = new Gauge({
+    name: 'mosaic_index_lag_s',
+    help: 'Seconds since the newest indexed document was updated',
+    registers: [registry],
+  });
+  indexLagSeconds.set(0);
+
+  const searchDuration = new Histogram({
+    name: 'mosaic_search_duration_seconds',
+    help: 'Indexed search duration in seconds',
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1, 2.5],
+    registers: [registry],
+  });
+
   return {
     registry,
     requestsTotal,
@@ -69,5 +93,8 @@ export function createMetrics(
     syncLagMs,
     updateSizeBytes,
     errorRate,
+    indexDocsTotal,
+    indexLagSeconds,
+    searchDuration,
   };
 }

@@ -439,7 +439,7 @@ type BoardTemplateDef = {
 
 **Критерий фазы C.** Из галереи ставится 14 досок, у каждой валидная schema, группировка, seed. Смена языка локализует названия колонок у **новых** инстансов (как сейчас `localizeColumnName`).
 
-**Статус кода (2026-09-13, фаза E1 enterprise-плана).** A+B+C в `@affine/whiteboard`: каталог 14 шаблонов, toolbar Kanban↔Table / Fields / Hide / Focus / CSV / synced+clone, ingest drag стикеров, live `wb:record-card`, clone копирует rows. Не закрыто здесь: FilterGroup в шапке, keyboard parity, C4 save-as-template, Timeline/AI/Jira (D–F), default-on флаг, live dual-browser e2e. SVG-превью Affine panel не делались — живой каталог в slash и dock Templates.
+**Статус кода (2026-09-13, фаза E1 enterprise-плана).** A+B+C в `@affine/whiteboard`: каталог 14 шаблонов, toolbar Kanban↔Table / Fields / Hide / Focus / CSV / synced+clone, ingest drag стикеров, live `wb:record-card`, clone копирует rows. Не закрыто здесь: FilterGroup в шапке, keyboard parity, C4 save-as-template, AI/Jira (E–F), default-on флаг, live dual-browser e2e. Timeline — фаза D / E4. SVG-превью Affine panel не делались — живой каталог в slash и dock Templates.
 
 ### Фаза D — Timeline layout (P1, 4–5 недель)
 
@@ -474,6 +474,8 @@ LOD: L0 = ось + цветные полоски без текста; L1 = title
 Тип поля `relation` с ролями `blocking` / `blocked-by`. На timeline — линии между bars. На kanban — иконка блокерa, без линий (как Miro: visualization not in Kanban).
 
 **Критерий фазы D.** Project-tracking доска → Timeline, бары на местах, растянули дату — в Table те же Start/End. Milestone «Release» виден. Zoom-out не убивает FPS (бюджет как у kanban).
+
+**Статус кода (2026-09-13, фаза E4 enterprise-плана).** Layout `timeline` на `wb:board`, toolbar Kanban/Table/Timeline, L0/L1/L2 bars, scale day/week/month/quarter, invalid End&lt;Start, `view.milestones`, drag бара патчит Start/End. Не закрыто: BlockSuite data-view timeline preset, D4 dependency lines, calendar layout, live dual-browser FPS.
 
 ### Фаза E — AI Sidekick (P1, 3 недели, нужен `enable_ai`)
 

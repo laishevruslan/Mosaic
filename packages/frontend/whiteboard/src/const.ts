@@ -61,6 +61,7 @@ export interface WhiteboardLodConfig {
   kanbanCardEstimatePx: number;
   kanbanColumnEstimatePx: number;
   virtualOverscan: number;
+  maxLiveTimelines?: number;
 }
 
 export const WHITEBOARD_LOD: WhiteboardLodConfig = {
@@ -73,4 +74,19 @@ export const WHITEBOARD_LOD: WhiteboardLodConfig = {
   kanbanCardEstimatePx: 44,
   kanbanColumnEstimatePx: 160,
   virtualOverscan: 1,
+  maxLiveTimelines: 1,
+};
+
+/** Conservative LOD for coarse-pointer / narrow viewports (§5.11). */
+export const WHITEBOARD_LOD_MOBILE: WhiteboardLodConfig = {
+  z0: 0.45,
+  z1: 0.85,
+  maxLiveCharts: 1,
+  maxLiveKanban: 1,
+  maxLiveSketches: 1,
+  l1KanbanCards: 2,
+  kanbanCardEstimatePx: 44,
+  kanbanColumnEstimatePx: 160,
+  virtualOverscan: 1,
+  maxLiveTimelines: 1,
 };

@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin';
 
 import { errors } from '../../domain/errors.js';
+import type { AnalyticsService } from '../../application/analytics-service.js';
 import type { AuthService } from '../../application/auth-service.js';
 import type { DocService } from '../../application/doc-service.js';
 import type { ShareService } from '../../application/share-service.js';
@@ -9,6 +10,7 @@ export const docRoutes = fp<{
   auth: AuthService;
   docs: DocService;
   shares: ShareService;
+  analytics?: AnalyticsService;
 }>(
   async (app, opts) => {
     app.get('/api/workspaces/:id/docs/:docId', async (request, reply) => {
@@ -28,6 +30,18 @@ export const docRoutes = fp<{
         const published = await opts.shares.publicDoc(id, docId);
         const mode = published.mode === 'Edgeless' ? 'edgeless' : 'page';
         void reply.header('publish-mode', mode);
+        const visitor =
+          (request.headers['x-forwarded-for'] as string | undefined)?.split(
+            ','
+          )[0]?.trim() ||
+          request.ip ||
+          'anon';
+        await opts.analytics?.recordShareView({
+          workspaceId: id,
+          docId,
+          visitorKey: visitor,
+          guest: !request.authSession,
+        });
         if (request.method === 'HEAD') {
           return reply.status(200).send();
         }

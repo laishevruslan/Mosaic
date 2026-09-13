@@ -2,6 +2,7 @@ import type { FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { z } from 'zod';
 
+import type { CaptchaService } from '../../application/captcha-service.js';
 import {
   publicUser,
   type AuthService,
@@ -20,6 +21,7 @@ const EmailPassword = z.object({
   password: z.string().optional(),
   callbackUrl: z.string().optional(),
   client_nonce: z.string().optional(),
+  captchaToken: z.string().optional(),
 });
 
 const Preflight = z.object({
@@ -93,6 +95,7 @@ export const authRoutes = fp<{
   auth: AuthService;
   cookies: CookiePolicy;
   sso: SsoService;
+  captcha: CaptchaService;
 }>(
   async (app, opts) => {
     const authLimit = {
@@ -122,6 +125,7 @@ export const authRoutes = fp<{
 
     app.post('/api/auth/sign-in', authLimit, async (request, reply) => {
       const body = EmailPassword.parse(request.body);
+      opts.captcha.verify(body.captchaToken);
       if (body.callbackUrl && !body.password) {
         throw errors.emailServiceNotConfigured();
       }
@@ -166,8 +170,12 @@ export const authRoutes = fp<{
       throw errors.emailServiceNotConfigured();
     });
 
-    app.get('/api/auth/captcha', async () => {
-      throw errors.actionForbidden('Captcha is not enabled.');
+    app.get('/api/auth/captcha', async (_request, reply) => {
+      if (!opts.captcha.advertised) {
+        const error = errors.actionForbidden('Captcha is not enabled.');
+        return reply.status(403).send(error.toJSON());
+      }
+      return opts.captcha.issue();
     });
 
     app.get('/api/auth/sessions', async request => {

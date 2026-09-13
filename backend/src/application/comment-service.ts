@@ -52,6 +52,14 @@ export class CommentService {
     private readonly extras: { webhooks?: WebhookService } = {}
   ) {}
 
+  private indexer?: { enqueue(workspaceId: string, docId: string): void };
+
+  bindIndexer(indexer: {
+    enqueue(workspaceId: string, docId: string): void;
+  }): void {
+    this.indexer = indexer;
+  }
+
   async list(
     user: User,
     workspaceId: string,
@@ -114,6 +122,7 @@ export class CommentService {
       commentId: comment.id,
       docId: input.docId,
     });
+    this.indexer?.enqueue(input.workspaceId, input.docId);
     return this.toComment(comment, [], new Map([[user.id, user]]));
   }
 
@@ -130,6 +139,7 @@ export class CommentService {
       updated.docId,
       encodeCursor(updated.updatedAt, updated.id)
     );
+    this.indexer?.enqueue(updated.workspaceId, updated.docId);
     return true;
   }
 
@@ -159,6 +169,7 @@ export class CommentService {
       comment.docId,
       encodeCursor(this.clock.now(), comment.id)
     );
+    this.indexer?.enqueue(comment.workspaceId, comment.docId);
     return true;
   }
 

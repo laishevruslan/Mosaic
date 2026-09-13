@@ -34,6 +34,8 @@ export type BoardCardPreview = BoardSnapshotRow & {
   timeSpent?: number;
   attachmentCount: number;
   checklist?: { done: number; total: number };
+  startAt?: string;
+  endAt?: string;
 };
 
 export type BoardGrid = {
@@ -42,6 +44,7 @@ export type BoardGrid = {
   lanes: BoardLanePreview[];
   cells: BoardGridCell[];
   wipLimits: BoardWipLimits;
+  milestones: Array<{ id: string; at: string; title: string }>;
 };
 
 const UNGROUPED = '';
@@ -95,6 +98,21 @@ function collectLanes(
   return lanes;
 }
 
+function dateCell(
+  input: BoardSnapshotInput,
+  rowId: string,
+  names: string[]
+): string | undefined {
+  const column = input.columns.find(item =>
+    names.includes(item.name.trim().toLowerCase())
+  );
+  if (!column) return;
+  const value = cellValue(input.cells, rowId, column.id);
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number') return new Date(value).toISOString();
+  return;
+}
+
 function enrichCard(
   row: BoardSnapshotRow,
   input: BoardSnapshotInput
@@ -119,12 +137,20 @@ function enrichCard(
   const files = fileColumn
     ? attachmentCount(cellValue(input.cells, row.id, fileColumn.id))
     : 0;
+  const startAt =
+    dateCell(input, row.id, ['start', 'start at', 'start date']) ??
+    dateCell(input, row.id, ['due', 'due date']);
+  const endAt =
+    dateCell(input, row.id, ['end', 'end at', 'end date', 'due', 'due date']) ??
+    startAt;
   return {
     ...row,
     tasks,
     timeSpent: Number.isFinite(spent) ? spent : undefined,
     attachmentCount: files,
     checklist: tasks.length ? checklistProgress(tasks) : undefined,
+    startAt,
+    endAt,
   };
 }
 
@@ -153,6 +179,7 @@ export function readBoardGrid(input: BoardSnapshotInput): BoardGrid {
     lanes,
     cells,
     wipLimits: view?.wipLimits ?? {},
+    milestones: view?.milestones ?? [],
   };
 }
 

@@ -71,6 +71,7 @@ export {
   RECORD_CARD_WIDGET_SIZE,
   SKETCH_WIDGET_SIZE,
   WHITEBOARD_LOD,
+  WHITEBOARD_LOD_MOBILE,
 } from './const';
 export {
   canEditBoardWidgets,

@@ -38,6 +38,7 @@ export type BoardSnapshotView = {
   groupByAxes?: { x?: string; y?: string };
   wipLimits?: Record<string, number>;
   laneFilter?: string;
+  milestones?: Array<{ id: string; at: string; title: string }>;
   groupProperties?: Array<{
     key: string;
     hide?: boolean;

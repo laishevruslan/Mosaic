@@ -1,5 +1,6 @@
 import type { FastifyRequest } from 'fastify';
 
+import type { AnalyticsService } from '../../application/analytics-service.js';
 import type { AdminUserService } from '../../application/admin-user-service.js';
 import type { AuditService } from '../../application/audit-service.js';
 import type { AuthService } from '../../application/auth-service.js';
@@ -127,6 +128,52 @@ export const adminTypeDefs = /* GraphQL */ `
     bucket: TimeBucket!
     requestedSize: Int!
     effectiveSize: Int!
+  }
+
+  input AdminDashboardInput {
+    copilotWindowDays: Int
+    sharedLinkWindowDays: Int
+    storageHistoryDays: Int
+    syncHistoryHours: Int
+    timezone: String
+  }
+
+  type AdminDashboardMinutePoint {
+    minute: DateTime!
+    activeUsers: Int!
+  }
+
+  type AdminDashboardValueDayPoint {
+    date: DateTime!
+    value: SafeInt!
+  }
+
+  type AdminSharedLinkTopItem {
+    workspaceId: String!
+    docId: String!
+    title: String
+    shareUrl: String!
+    publishedAt: DateTime
+    views: SafeInt!
+    uniqueViews: SafeInt!
+    guestViews: SafeInt!
+    lastAccessedAt: DateTime
+  }
+
+  type AdminDashboard {
+    syncActiveUsers: Int!
+    syncActiveUsersTimeline: [AdminDashboardMinutePoint!]!
+    syncWindow: TimeWindow!
+    copilotConversations: Int!
+    copilotWindow: TimeWindow!
+    workspaceStorageBytes: SafeInt!
+    blobStorageBytes: SafeInt!
+    workspaceStorageHistory: [AdminDashboardValueDayPoint!]!
+    blobStorageHistory: [AdminDashboardValueDayPoint!]!
+    storageWindow: TimeWindow!
+    topSharedLinks: [AdminSharedLinkTopItem!]!
+    topSharedLinksWindow: TimeWindow!
+    generatedAt: DateTime!
   }
 
   type WorkspaceUserTypeAdmin {
@@ -316,6 +363,7 @@ export const adminTypeDefs = /* GraphQL */ `
       filter: AdminAllSharedLinksFilterInput
     ): PaginatedAdminAllSharedLink!
     adminMailDeliveries(input: AdminMailDeliveriesInput): AdminMailDeliveryAnalytics!
+    adminDashboard(input: AdminDashboardInput): AdminDashboard!
     authSigningKeys: [AuthSigningKeyType!]!
     organization: OrganizationType
     organizationDomains: [OrgDomainType!]!
@@ -371,6 +419,7 @@ export interface AdminGraphqlOpts {
   scim: ScimService;
   policy: SecurityPolicyService;
   audit: AuditService;
+  analytics: AnalyticsService;
   publicUrl: string;
   requestOf: (ctx: { request?: FastifyRequest }) => FastifyRequest | undefined;
 }
@@ -732,6 +781,26 @@ export function adminResolvers(opts: AdminGraphqlOpts) {
         try {
           await adminOf(ctx);
           return mailAnalytics(args.input?.hours ?? 24);
+        } catch (error) {
+          throw toGraphQLError(error);
+        }
+      },
+      adminDashboard: async (
+        _root: unknown,
+        args: {
+          input?: {
+            copilotWindowDays?: number | null;
+            sharedLinkWindowDays?: number | null;
+            storageHistoryDays?: number | null;
+            syncHistoryHours?: number | null;
+            timezone?: string | null;
+          } | null;
+        },
+        ctx: { request?: FastifyRequest }
+      ) => {
+        try {
+          await adminOf(ctx);
+          return opts.analytics.dashboard(args.input ?? {});
         } catch (error) {
           throw toGraphQLError(error);
         }

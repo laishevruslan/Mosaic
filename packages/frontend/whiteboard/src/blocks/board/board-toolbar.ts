@@ -23,7 +23,15 @@ export function renderBoardToolbar(props: BoardToolbarProps) {
   const layoutLabel =
     props.layout === 'table'
       ? I18n['com.affine.whiteboard.board.layout.table']()
-      : I18n['com.affine.whiteboard.board.layout.kanban']();
+      : props.layout === 'timeline'
+        ? I18n['com.affine.whiteboard.board.layout.timeline']()
+        : I18n['com.affine.whiteboard.board.layout.kanban']();
+  const nextLayout: BoardLayout =
+    props.layout === 'kanban'
+      ? 'table'
+      : props.layout === 'table'
+        ? 'timeline'
+        : 'kanban';
 
   return html`
     <div class="wb-board-toolbar" data-testid="wb-board-toolbar">
@@ -31,8 +39,7 @@ export function renderBoardToolbar(props: BoardToolbarProps) {
         type="button"
         data-testid="wb-board-layout"
         ?disabled=${!props.canEdit}
-        @click=${() =>
-          props.onLayout(props.layout === 'table' ? 'kanban' : 'table')}
+        @click=${() => props.onLayout(nextLayout)}
       >
         ${layoutLabel}
       </button>

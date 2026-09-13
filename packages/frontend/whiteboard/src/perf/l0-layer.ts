@@ -2,7 +2,7 @@ import { I18n } from '@affine/i18n';
 import { FeatureFlagService } from '@blocksuite/affine/shared/services';
 import { GfxExtension } from '@blocksuite/affine/std/gfx';
 
-import { WHITEBOARD_LOD } from '../const';
+import { resolveWhiteboardLod } from './mobile';
 import { createL0Backend, type L0Backend } from './l0-renderer';
 import {
   cullSprites,
@@ -191,7 +191,7 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
     const active = shouldActivateL0Layer(
       this.gfx.viewport.zoom,
       enabled,
-      WHITEBOARD_LOD.z0
+      resolveWhiteboardLod().z0
     );
     this.setActive(active);
     whiteboardTelemetry.noteBoardObjects(this.gfx.layer.blocks.length);

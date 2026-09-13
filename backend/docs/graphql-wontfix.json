@@ -1,5 +1,4 @@
 [
-  "admin/admin-dashboard.gql",
   "cancel-subscription.gql",
   "change-email.gql",
   "change-password.gql",
@@ -18,7 +17,6 @@
   "get-workspace-page-meta.gql",
   "get-workspace-subscription.gql",
   "grant-doc-user-roles.gql",
-  "indexer-aggregate.gql",
   "invoices-count.gql",
   "invoices.gql",
   "license/activate-license.gql",

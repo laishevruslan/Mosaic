@@ -51,9 +51,16 @@ export class DocService {
   ) {}
 
   private guard?: GuardService;
+  private indexer?: { enqueue(workspaceId: string, docId: string): void };
 
   bindGuard(guard: GuardService): void {
     this.guard = guard;
+  }
+
+  bindIndexer(indexer: {
+    enqueue(workspaceId: string, docId: string): void;
+  }): void {
+    this.indexer = indexer;
   }
 
   async authorize(
@@ -454,6 +461,9 @@ export class DocService {
       snapshot,
       timestamp: record.timestamp,
     });
+    if (spaceType === 'workspace') {
+      this.indexer?.enqueue(spaceId, docId);
+    }
     if (spaceType === 'workspace' && this.guard) {
       if (await this.guard.isHeld(spaceId)) {
         return;

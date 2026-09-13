@@ -7,6 +7,7 @@ import type { AiGatewayService } from '../../application/ai-gateway.js';
 import type { AuditService } from '../../application/audit-service.js';
 import type { AuthService } from '../../application/auth-service.js';
 import type { EmbeddingService } from '../../application/embedding-service.js';
+import type { IndexerService } from '../../application/indexer-service.js';
 import type { JiraService } from '../../application/jira-service.js';
 import type { WebhookService } from '../../application/webhook-service.js';
 import type { WorkspaceService } from '../../application/workspace-service.js';
@@ -51,6 +52,7 @@ export const platformRoutes = fp<{
   ai: AiGatewayService;
   embeddings: EmbeddingService;
   jira: JiraService;
+  indexer: IndexerService;
   jiraWebhookSecret?: string;
 }>(
   async (app, opts) => {
@@ -81,6 +83,18 @@ export const platformRoutes = fp<{
         return opts.audit.toCsv(events);
       }
       return { items: events };
+    });
+
+    app.post('/api/admin/indexer/reindex', async request => {
+      const user = await requireUser(request);
+      opts.auth.requireInstanceAdmin(user);
+      const query = request.query as { workspaceId?: string };
+      const indexed = await opts.indexer.reindex(
+        query.workspaceId && query.workspaceId.length > 0
+          ? query.workspaceId
+          : undefined
+      );
+      return { ok: true, indexed };
     });
 
     app.get('/api/workspaces/:id/webhooks', async request => {

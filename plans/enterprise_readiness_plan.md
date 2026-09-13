@@ -327,8 +327,10 @@ Domain control + verification, SAML, MFA через IdP, sharing restrictions, K
 
 ### Трек Enterprise-4 — Поиск по канвасу + mobile паритет (6–8 недель, низкий приоритет)
 
-- [ ] Индексация текста widgets — §5.10
-- [ ] Mobile LOD-профиль и touch UX — §5.11
+- [x] Индексация текста widgets — §5.10
+- [x] Mobile LOD-профиль и touch UX — §5.11
+
+Не полностью: см. `plans/mosaic_enterprise_plan.md` фаза E4 (OpenSearch не live, p95 10k не измерен, `syncActiveUsers`=0, timeline без data-view preset/D4, mobile без touch-DnD и default-on edgeless, captcha HMAC не Turnstile).
 
 ### Позже (после product-market fit виджетов)
 

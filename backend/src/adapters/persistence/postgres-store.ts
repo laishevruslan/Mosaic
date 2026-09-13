@@ -61,7 +61,7 @@ import type {
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc, PublicDocMode } from '../../domain/share.js';
 import { applyMigrations } from './migrate.js';
-import { PostgresE3Store } from './postgres-e3.js';
+import { PostgresE4Store } from './postgres-e4.js';
 
 interface UserRow {
   id: string;
@@ -462,7 +462,7 @@ function paginate<T extends { createdAt: Date; id: string }>(
   };
 }
 
-export class PostgresStore extends PostgresE3Store implements MosaicStore {
+export class PostgresStore extends PostgresE4Store implements MosaicStore {
   readonly kind = 'postgres' as const;
 
   constructor(sql: postgres.Sql) {

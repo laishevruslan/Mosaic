@@ -103,6 +103,39 @@ export const platformTypeDefs = /* GraphQL */ `
     updatedByUser: PublicUserType
   }
 
+  input AggregateHitsInput {
+    fields: [String!]
+    highlights: [SearchHighlight!]
+    pagination: SearchPagination
+  }
+
+  input AggregateOptionsInput {
+    hits: AggregateHitsInput
+    pagination: SearchPagination
+  }
+
+  input AggregateInput {
+    field: String
+    options: AggregateOptionsInput
+    query: SearchQuery
+    table: SearchTable
+  }
+
+  type AggregateHits {
+    nodes: [SearchNodeObjectType!]!
+  }
+
+  type AggregateBucket {
+    key: String!
+    count: Int!
+    hits: AggregateHits
+  }
+
+  type AggregateResultObjectType {
+    buckets: [AggregateBucket!]!
+    pagination: SearchResultPagination!
+  }
+
   type CopilotQuota {
     limit: SafeInt
     used: SafeInt!
@@ -204,6 +237,7 @@ export const platformTypeDefs = /* GraphQL */ `
   extend type WorkspaceType {
     search(input: SearchInput!): SearchResultObjectType!
     searchDocs(input: SearchDocsInput!): [SearchDocObjectType!]!
+    aggregate(input: AggregateInput!): AggregateResultObjectType!
     securityPolicy: SecurityPolicyType!
   }
 
@@ -380,6 +414,31 @@ export function platformResolvers(opts: PlatformGraphqlOpts) {
             createdByUser: null,
             updatedByUser: null,
           }));
+        } catch (error) {
+          throw toGraphQLError(error);
+        }
+      },
+      aggregate: async (
+        parent: { id: string },
+        args: {
+          input: {
+            field?: string | null;
+            query?: unknown;
+            options?: { pagination?: { limit?: number } };
+          };
+        },
+        ctx: { request?: FastifyRequest }
+      ) => {
+        try {
+          const user = await userOf(ctx);
+          await opts.workspaces.requireMember(user, parent.id);
+          return opts.search.aggregate(parent.id, {
+            ...(args.input.field ? { field: args.input.field } : {}),
+            ...(args.input.query !== undefined
+              ? { query: args.input.query }
+              : {}),
+            ...(args.input.options ? { options: args.input.options } : {}),
+          });
         } catch (error) {
           throw toGraphQLError(error);
         }

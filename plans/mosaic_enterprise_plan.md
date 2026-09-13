@@ -115,14 +115,14 @@ Clean-room policy остаётся: писать по контрактам кл�
 | ER-17 | DLP hook | 🟡 `ContentClassifier` regex | Не ML-классификатор |
 | ER-18 | Sensitivity labels | 🟡 Public/Internal/Confidential | Org-wide policy UI — позже |
 | ER-19 | WCAG 2.2 AA | 🟡 keyboard explore + ARIA | axe Playwright skipped unless `A11Y=1`; VPAT процесс |
-| ER-20 | Поиск по объектам канваса | ❌ | §5.10 |
-| ER-21 | Mobile edgeless parity | 🟡 флаг | §5.11 |
+| ER-20 | Поиск по объектам канваса | 🟡 FTS writer + extractors | OpenSearch live cluster / p95 10k docs не измерены |
+| ER-21 | Mobile edgeless parity | 🟡 conservative LOD | Touch vs widget-DnD и default-on mobile edgeless не делались |
 | ER-22 | Marketplace | ❌ | После SDK, P3 |
 | ER-23 | Object-level ACL | ❌ сознательно | Не v1; labels вместо этого |
 
 ### 2.3 Из `miro_kanban_parity_plan.md` (не начат)
 
-Фазы A–G плана Kanban **не реализованы**: нет `board-toolbar`, layout switch, synced views/`wb:record-card`, галереи 14 шаблонов, Timeline, AI Sidekick UX, Jira two-way на виджете. Флаг `enable_board_widget` default false.
+Фазы A–G плана Kanban: A+B+C в коде (E1); Timeline layout — E4 (`wb:board` layout, без data-view preset). AI Sidekick / Jira two-way на виджете — не E4. Флаг `enable_board_widget` default false.
 
 Для enterprise это не «косметика»: воркшоп + Jira Planner — типовой RFP. Переносится как трек **E1-K** (продуктовый паритет Format) параллельно identity.
 
@@ -187,7 +187,7 @@ Clean-room policy остаётся: писать по контрактам кл�
 | N-25 | AI Gateway: маршруты моделей, BYOK per-workspace, rate/quota, audit каждого вызова | Не один env-ключ на процесс | P0 |
 | N-26 | Embeddings pipeline + `CopilotEmbedding` feature | RAG по доске/докам | P1 |
 | N-27 | MCP credentials + stdio/HTTP tools (`search`, `read_document`, write later) | IDE/агенты | P1 |
-| N-28 | `adminDashboard` метрики из audit + prometheus + blob sizes | Admin analytics | P1 |
+| N-28 | `adminDashboard` метрики из audit + prometheus + blob sizes | 🟡 GraphQL rollups | `syncActiveUsers` без Redis presence = 0 |
 | N-29 | GCloud plugin-адаптеры: Cloud Logging, Cloud Monitoring, GCS как S3 | Managed GCP | P2 |
 | N-30 | Seat enforcement на `inviteMembers` / `acceptInvite` / SCIM | Иначе биллинг бессмысленен | P0 |
 | N-13 | Idle session + device inventory UI (сессии уже в модели) | Security questionnaire | P0 |
@@ -195,7 +195,7 @@ Clean-room policy остаётся: писать по контрактам кл�
 | N-15 | Webhook delivery queue + retries + dead letter | Сейчас sync HTTP | P1 |
 | N-16 | Postgres logical backup job + blob versioning | DR | P1 |
 | N-17 | Status/SLO dashboard (sync p95, error budget) | Ops | P1 |
-| N-18 | Captcha optional (сейчас 403) для публичного signup | Abuse | P2 |
+| N-18 | Captcha optional (сейчас 403) для публичного signup | 🟡 HMAC challenge, default off | Не Turnstile/hCaptcha |
 | N-19 | VirusTotal-class optional scanner hook на blob complete | Финсектор | P2 |
 | N-20 | Customer success: org templates / blueprints | Onboarding | P2 |
 | N-21 | OpenAPI для REST v2 + changelog compat | Developer platform | P1 |
@@ -805,15 +805,29 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 ### Фаза E4 — Full-text indexer + analytics + mobile (8–10 недель)
 
-- [ ] Async FTS writer + `search` / `searchDocs` / `aggregate`
-- [ ] Widget extractors
-- [ ] `adminDashboard` + storage/sync/copilot rollups + top shared links
-- [ ] Mobile LOD
-- [ ] Timeline layout (Kanban D)
-- [ ] Captcha optional
-- [ ] Optional ES/OpenSearch driver
+- [x] Async FTS writer + `search` / `searchDocs` / `aggregate`
+- [x] Widget extractors
+- [x] `adminDashboard` + storage/sync/copilot rollups + top shared links
+- [x] Mobile LOD
+- [x] Timeline layout (Kanban D)
+- [x] Captcha optional
+- [x] Optional ES/OpenSearch driver
 
-**Exit:** поиск карточки канбана; admin dashboard не нули; p95 search &lt; 200ms на 10k docs.
+**Сделано в коде (2026-09-13).** Clean-room `@mosaic/server` (`backend/`): async FTS writer `index.document` после compact/comment; Postgres `search_documents` + GIN / memory `ILIKE`-эквивалент; extractors page/note/paragraph/comment/`wb:chart`/`wb:board`/database cells; GraphQL `search` / `searchDocs` / `workspace.aggregate` (buckets по flavour); query-time Yjs scan остаётся fallback, если индекс пуст (phase6). Admin `POST /api/admin/indexer/reindex`. `adminDashboard`: blob+snapshot storage, copilot session count, top shared links с view counters на `GET /api/workspaces/:id/public-docs/:docId`; prometheus `mosaic_index_docs_total` / `mosaic_index_lag_s` / `mosaic_search_duration_seconds`. Captcha: `MOSAIC_CAPTCHA_ENABLED` HMAC challenge (`GET /api/auth/captcha`), default off. OpenSearch: `MOSAIC_INDEXER_DRIVER=opensearch` + `OPENSEARCH_URL` HTTP dual-write, fallback на local store. Whiteboard: `WHITEBOARD_LOD_MOBILE` + `resolveWhiteboardLod()` / create-only helper для chart/sketch; timeline layout (Kanban↔Table↔Timeline), L0 axis+strips / L1 titles / L2 date drag, scale day/week/month/quarter, invalid End&lt;Start, milestones на `view.milestones`. Persistence: memory + Postgres `010_e4`. Тесты: `backend/test/e4/indexer.test.ts`, `timeline-view.spec.ts`, `mobile.spec.ts`. GraphQL surface: **132** implemented / **45** wontfix (`admin-dashboard.gql`, `indexer-aggregate.gql` сняты с wontfix). i18n en+ru: `com.affine.whiteboard.board.layout.timeline`, `board.timeline.*`, `com.affine.admin.dashboard.*`, `com.affine.auth.captcha.*`.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы в коде):**
+
+- OpenSearch не live-round-trip к кластеру; CI мокает HTTP. pgvector по-прежнему hash embeddings E2, не замена FTS.
+- `syncActiveUsers` / timeline = 0 без Redis presence.
+- Timeline: нет BlockSuite data-view preset (kanban grouping + `props.layout='timeline'`), нет dependency lines (D4), calendar layout не рисуется.
+- Mobile: conservative LOD + create-only helper; конфликт touch vs widget-DnD и default-on `enable_mobile_edgeless_editing` не делались. Live kanban/chart budget singletons по-прежнему инициализируются desktop `maxLive*`.
+- Captcha — HMAC challenge, не Turnstile/hCaptcha; signup UI капчи нет.
+- Exit p95 search &lt; 200ms на 10k docs **не измерялся** в этой среде.
+- `i18n.gen.ts` не регенерировался (I18n.t / proxy принимают неизвестные ключи; en.json + ru.json заполнены).
+- Default-on флаги facilitation/kanban/chrome остаются **false** (E1).
+- Blob complete не пишет FTS-документы (нет docId у blob).
+
+**Exit:** поиск карточки канбана по title — закрыт в unit/API тесте. Admin dashboard не все нули — закрыт для storage/copilot/shared links. p95 на 10k docs — **не закрыт**.
 
 ### Фаза E5 — Stripe, license, seats (6–8 недель)
 

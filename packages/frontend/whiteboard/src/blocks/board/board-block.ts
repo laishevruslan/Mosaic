@@ -40,6 +40,7 @@ import {
   applyCardMove,
   applyChecklistToggle,
   applyTimeLog,
+  applyTimelineDates,
   applyViewMeta,
   cloneBoardDatabase,
   createProjectionView,
@@ -70,6 +71,7 @@ import { boardBlockStyles } from './styles';
 import type { BoardLayout } from './types';
 import { recordsToCsv } from './view-meta';
 import { windowRange } from './virtualize';
+import { renderBoardTimeline } from './timeline-view';
 
 export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
   static override styles = boardBlockStyles;
@@ -88,6 +90,9 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
 
   @state()
   accessor cardScroll: Record<string, number> = {};
+
+  @state()
+  accessor timelineScale: 'day' | 'week' | 'month' | 'quarter' = 'week';
 
   private _kanban?: ReturnType<typeof createBoardKanbanLogic>;
   private _databaseId?: string;
@@ -116,7 +121,11 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
   }
 
   private get layout(): BoardLayout {
-    return this.model.props.layout === 'table' ? 'table' : 'kanban';
+    const layout = this.model.props.layout;
+    if (layout === 'table' || layout === 'timeline' || layout === 'calendar') {
+      return layout;
+    }
+    return 'kanban';
   }
 
   protected get databaseModel() {
@@ -604,7 +613,7 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
     const live = level === 'l2';
     const grid = this.boardGrid();
     const useSwimlanes = !!grid?.axes.y;
-    const kanban = live && !useSwimlanes && this.layout !== 'table'
+    const kanban = live && !useSwimlanes && this.layout === 'kanban'
       ? this.kanban()
       : undefined;
     const tableLive =
@@ -656,7 +665,34 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
           }}
         >
           ${
-            live && tableLive
+            this.layout === 'timeline' && grid
+              ? renderBoardTimeline({
+                  rows: grid.columns.flatMap(column => column.cards),
+                  level,
+                  scale: this.timelineScale,
+                  milestones: grid.milestones,
+                  handlers: live
+                    ? {
+                        ...handlers,
+                        onScale: scale => {
+                          this.timelineScale = scale;
+                        },
+                        onDates: (rowId, startAt, endAt) => {
+                          const database = this.databaseModel;
+                          if (!database) return;
+                          applyTimelineDates(
+                            this.model.store,
+                            database.id,
+                            rowId,
+                            startAt,
+                            endAt
+                          );
+                          this.requestUpdate();
+                        },
+                      }
+                    : undefined,
+                })
+            : live && tableLive
               ? tableLive.render()
               : live && kanban
                 ? kanban.render()

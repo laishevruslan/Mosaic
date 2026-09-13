@@ -7,6 +7,9 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 
+import { AnalyticsService } from './application/analytics-service.js';
+import { CaptchaService } from './application/captcha-service.js';
+import { IndexerService } from './application/indexer-service.js';
 import { AdminUserService } from './application/admin-user-service.js';
 import { AiGatewayService } from './application/ai-gateway.js';
 import { ApiTokenService } from './application/api-token-service.js';
@@ -66,6 +69,7 @@ import { createMailer } from './adapters/mail/smtp.js';
 import { createLogger } from './adapters/observability/logger.js';
 import { createMetrics } from './adapters/observability/metrics.js';
 import { TracingSkeleton } from './adapters/observability/tracing.js';
+import { OpenSearchIndex } from './adapters/search/opensearch-index.js';
 import { createStore } from './adapters/persistence/store.js';
 import { connectRedis } from './adapters/redis/client.js';
 import { socketPlugin } from './adapters/realtime/socket-plugin.js';
@@ -428,7 +432,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     }
   };
   jobHandlers['index.document'] = async () => {
-    // Writer lands in E4; the job is recorded so the queue contract is live.
+    // Replaced after IndexerService is constructed (needs metrics registry).
   };
   jobHandlers['embed.document'] = async payload => {
     await embeddings.handleEmbedJob(payload);
@@ -460,6 +464,46 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   const metrics = createMetrics(config.OTEL_SERVICE_NAME, {
     collectProcessMetrics: config.NODE_ENV !== 'test',
   });
+  const captcha = new CaptchaService(
+    `${config.MOSAIC_SERVER_NAME}:captcha`,
+    config.MOSAIC_CAPTCHA_ENABLED === true
+  );
+  const analytics = new AnalyticsService(
+    store,
+    store,
+    store,
+    store,
+    store,
+    store,
+    clock,
+    config.MOSAIC_PUBLIC_URL
+  );
+  const remoteIndex =
+    config.MOSAIC_INDEXER_DRIVER === 'opensearch' && config.OPENSEARCH_URL
+      ? new OpenSearchIndex(config.OPENSEARCH_URL, fetch)
+      : undefined;
+  const indexer = new IndexerService(
+    store,
+    store,
+    store,
+    store,
+    clock,
+    jobs,
+    {
+      metrics: {
+        docsTotal: metrics.indexDocsTotal,
+        lagSeconds: metrics.indexLagSeconds,
+        searchDuration: metrics.searchDuration,
+      },
+      ...(remoteIndex ? { remote: remoteIndex } : {}),
+    }
+  );
+  search.bindIndexer(indexer);
+  docs.bindIndexer(indexer);
+  comments.bindIndexer(indexer);
+  jobHandlers['index.document'] = async payload => {
+    await indexer.handleIndexJob(payload);
+  };
   const tracing = new TracingSkeleton(
     config.OTEL_SERVICE_NAME,
     config.OTEL_EXPORTER_OTLP_ENDPOINT,
@@ -498,7 +542,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   await app.register(infoRoutes, { health });
   await app.register(healthRoutes, { health });
   await app.register(metricsRoutes, { metrics });
-  await app.register(authRoutes, { auth, cookies, sso });
+  await app.register(authRoutes, { auth, cookies, sso, captcha });
   await app.register(mfaRoutes, { auth, mfa, cookies });
   await app.register(scimRoutes, { scim });
   await app.register(setupRoutes, { auth, cookies });
@@ -530,6 +574,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     calendar,
     guard,
     gdpr,
+    analytics,
   });
   await app.register(mcpRoutes, { auth, workspaces, mcp });
   await app.register(apiV2Routes, {
@@ -538,7 +583,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     tokens,
     publicUrl: config.MOSAIC_PUBLIC_URL,
   });
-  await app.register(docRoutes, { auth, docs, shares });
+  await app.register(docRoutes, { auth, docs, shares, analytics });
   await app.register(blobRoutes, { auth, blobs });
   await app.register(platformRoutes, {
     auth,
@@ -548,6 +593,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     ai,
     embeddings,
     jira,
+    indexer,
     ...(config.MOSAIC_JIRA_WEBHOOK_SECRET
       ? { jiraWebhookSecret: config.MOSAIC_JIRA_WEBHOOK_SECRET }
       : {}),

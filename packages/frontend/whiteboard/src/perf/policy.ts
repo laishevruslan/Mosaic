@@ -1,4 +1,5 @@
-import { WHITEBOARD_FLAVOURS, WHITEBOARD_LOD } from '../const';
+import { WHITEBOARD_FLAVOURS } from '../const';
+import { resolveWhiteboardLod } from './mobile';
 import { whiteboardTelemetry } from './telemetry';
 
 export type WidgetLodLevel = 'l0' | 'l1' | 'l2';
@@ -29,8 +30,8 @@ export function getWidgetLodLevel(
   selected: boolean,
   hovered: boolean
 ): WidgetLodLevel {
-  if (selected || (hovered && zoom > WHITEBOARD_LOD.z1)) return 'l2';
-  if (zoom < WHITEBOARD_LOD.z0) return 'l0';
+  if (selected || (hovered && zoom > resolveWhiteboardLod().z1)) return 'l2';
+  if (zoom < resolveWhiteboardLod().z0) return 'l0';
   return 'l1';
 }
 
@@ -92,14 +93,19 @@ export function xywhCenterDistance(
 }
 
 export function maxLiveForKind(kind: LiveWidgetKind) {
-  if (kind === 'chart') return WHITEBOARD_LOD.maxLiveCharts;
-  if (kind === 'kanban') return WHITEBOARD_LOD.maxLiveKanban;
-  return WHITEBOARD_LOD.maxLiveSketches;
+  const lod = resolveWhiteboardLod();
+  if (kind === 'chart') return lod.maxLiveCharts;
+  if (kind === 'kanban') return lod.maxLiveKanban;
+  return lod.maxLiveSketches;
 }
 
 export class WhiteboardPerfPolicy {
-  readonly z0 = WHITEBOARD_LOD.z0;
-  readonly z1 = WHITEBOARD_LOD.z1;
+  get z0() {
+    return resolveWhiteboardLod().z0;
+  }
+  get z1() {
+    return resolveWhiteboardLod().z1;
+  }
   readonly flavours = WHITEBOARD_FLAVOURS;
 
   private readonly candidates = new Map<string, LiveCandidate>();

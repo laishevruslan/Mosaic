@@ -9,6 +9,11 @@ export {
 } from './l0-scene';
 export { WhiteboardLayoutHandlerExtensions } from './layout-handler';
 export {
+  isMobileViewport,
+  mobileWidgetCreateOnly,
+  resolveWhiteboardLod,
+} from './mobile';
+export {
   getWidgetLodLevel,
   type LiveCandidate,
   livePriorityScore,

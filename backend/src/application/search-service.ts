@@ -1,6 +1,6 @@
-import { applyUpdate, Doc as YDoc } from 'yjs';
-
 import type { CommentStore, DocStore } from '../domain/ports.js';
+import { yjsHaystack } from './indexer-extract.js';
+import type { IndexerService } from './indexer-service.js';
 
 export interface SearchDocHit {
   docId: string;
@@ -39,24 +39,7 @@ function keywordFromQuery(query: unknown): string {
 }
 
 function yjsText(snapshot: Uint8Array | null, updates: Uint8Array[]): string {
-  const doc = new YDoc();
-  if (snapshot && snapshot.byteLength > 0) {
-    applyUpdate(doc, snapshot);
-  }
-  for (const update of updates) {
-    applyUpdate(doc, update);
-  }
-  const parts: string[] = [];
-  doc.share.forEach((abstract, key) => {
-    const typed = abstract as { _map?: Map<unknown, unknown> };
-    if (typed._map && typed._map.size > 0) {
-      parts.push(JSON.stringify(doc.getMap(key).toJSON()));
-      return;
-    }
-    const text = doc.getText(key).toString();
-    parts.push(text.length > 0 ? text : key);
-  });
-  return parts.join('\n');
+  return yjsHaystack(snapshot, updates);
 }
 
 function snippet(haystack: string, needle: string): string {
@@ -69,10 +52,16 @@ function snippet(haystack: string, needle: string): string {
 }
 
 export class SearchService {
+  private indexer?: IndexerService;
+
   constructor(
     private readonly docs: DocStore,
     private readonly comments: CommentStore
   ) {}
+
+  bindIndexer(indexer: IndexerService): void {
+    this.indexer = indexer;
+  }
 
   async searchDocs(
     workspaceId: string,
@@ -83,6 +72,31 @@ export class SearchService {
     if (!needle) {
       return [];
     }
+    if (this.indexer && (await this.indexer.hasIndex(workspaceId))) {
+      const indexed = await this.indexer.searchDocuments(
+        workspaceId,
+        needle,
+        limit
+      );
+      if (indexed.length > 0) {
+        return indexed.map(row => ({
+          docId: row.docId,
+          title: row.title || row.docId,
+          blockId: row.blockId,
+          highlight: snippet(`${row.title}\n${row.body}`, needle),
+          createdAt: row.updatedAt,
+          updatedAt: row.updatedAt,
+        }));
+      }
+    }
+    return this.scanDocs(workspaceId, needle, limit);
+  }
+
+  private async scanDocs(
+    workspaceId: string,
+    needle: string,
+    limit: number
+  ): Promise<SearchDocHit[]> {
     const timestamps = await this.docs.listTimestamps('workspace', workspaceId);
     const hits: SearchDocHit[] = [];
     for (const docId of Object.keys(timestamps)) {
@@ -174,6 +188,23 @@ export class SearchService {
       count: nodes.length,
       hasMore: docs.length > skip + limit,
       nextCursor: docs.length > skip + limit ? String(skip + limit) : null,
+    };
+  }
+
+  async aggregate(
+    workspaceId: string,
+    input: {
+      field?: string;
+      query?: unknown;
+      options?: { pagination?: { limit?: number } };
+    }
+  ) {
+    if (this.indexer) {
+      return this.indexer.aggregate(workspaceId, input);
+    }
+    return {
+      buckets: [],
+      pagination: { count: 0, hasMore: false, nextCursor: null },
     };
   }
 }

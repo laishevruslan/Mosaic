@@ -71,6 +71,12 @@ import type { OauthAccount } from './sso.js';
 import type { SecurityPolicy } from './security.js';
 import type { PublicDoc } from './share.js';
 import type { DocSensitivity, RetentionPolicy } from './guard.js';
+import type {
+  DailyAnalytics,
+  SearchDocument,
+  SearchFlavourCount,
+  ShareViewStats,
+} from './search.js';
 import type { JobRecord } from './jobs.js';
 import type {
   MailMessage,
@@ -721,6 +727,40 @@ export interface RealtimeHub {
   emit(topic: string, input: Record<string, unknown>, event: unknown): void;
 }
 
+export interface IndexStore {
+  replaceSearchDocuments(
+    workspaceId: string,
+    docId: string,
+    docs: SearchDocument[]
+  ): Promise<void>;
+  searchDocuments(
+    workspaceId: string,
+    keyword: string,
+    limit: number
+  ): Promise<SearchDocument[]>;
+  countSearchDocuments(workspaceId?: string): Promise<number>;
+  listSearchFlavours(workspaceId: string): Promise<SearchFlavourCount[]>;
+  deleteSearchDocuments(workspaceId: string, docId?: string): Promise<void>;
+  latestSearchUpdatedAt(workspaceId?: string): Promise<Date | null>;
+}
+
+export interface AnalyticsStore {
+  recordShareView(input: {
+    workspaceId: string;
+    docId: string;
+    at: Date;
+    visitorKey: string;
+    guest: boolean;
+  }): Promise<ShareViewStats>;
+  getShareStats(
+    workspaceId: string,
+    docId: string
+  ): Promise<ShareViewStats | null>;
+  listShareStats(): Promise<ShareViewStats[]>;
+  upsertDailyAnalytics(row: DailyAnalytics): Promise<void>;
+  listDailyAnalytics(fromDay: string, toDay: string): Promise<DailyAnalytics[]>;
+}
+
 export interface MosaicStore
   extends
     IdentityStore,
@@ -748,4 +788,6 @@ export interface MosaicStore
     ScimStore,
     MfaStore,
     GuardStore,
+    IndexStore,
+    AnalyticsStore,
     HealthProbe {}

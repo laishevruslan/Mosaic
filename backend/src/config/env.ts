@@ -149,6 +149,9 @@ const EnvSchema = z.object({
   MOSAIC_JIRA_EMAIL: z.string().optional(),
   MOSAIC_JIRA_API_TOKEN: z.string().optional(),
   MOSAIC_JIRA_WEBHOOK_SECRET: z.string().optional(),
+  MOSAIC_CAPTCHA_ENABLED: boolish,
+  MOSAIC_INDEXER_DRIVER: z.enum(['local', 'opensearch']).optional(),
+  OPENSEARCH_URL: z.string().optional(),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
 });
 
@@ -205,6 +208,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const features = [...parsed.MOSAIC_FEATURES];
   if (parsed.MOSAIC_SERVER === true && !features.includes('mosaic')) {
     features.unshift('mosaic');
+  }
+  if (parsed.MOSAIC_CAPTCHA_ENABLED === true && !features.includes('Captcha')) {
+    features.push('Captcha');
   }
   return {
     ...parsed,

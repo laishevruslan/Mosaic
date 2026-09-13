@@ -10,6 +10,7 @@ import { createSchema, createYoga } from 'graphql-yoga';
 import type { FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 
+import type { AnalyticsService } from '../../application/analytics-service.js';
 import type { AuthService } from '../../application/auth-service.js';
 import type { AiGatewayService } from '../../application/ai-gateway.js';
 import type { ByokService } from '../../application/byok-service.js';
@@ -356,6 +357,7 @@ export const graphqlPlugin = fp<{
   calendar: CalendarService;
   guard: GuardService;
   gdpr: GdprService;
+  analytics: AnalyticsService;
 }>(
   async (app, opts) => {
     const blob = blobResolvers({
@@ -417,6 +419,7 @@ export const graphqlPlugin = fp<{
       scim: opts.scim,
       policy: opts.policy,
       audit: opts.audit,
+      analytics: opts.analytics,
       publicUrl: opts.config.MOSAIC_PUBLIC_URL,
       requestOf: httpRequest,
     });
@@ -478,7 +481,10 @@ export const graphqlPlugin = fp<{
             features: await serverConfigFeatures(
               opts.sso,
               opts.ai,
-              opts.config.MOSAIC_FEATURES
+              opts.config.MOSAIC_CAPTCHA_ENABLED === true &&
+                !opts.config.MOSAIC_FEATURES.includes('Captcha')
+                ? [...opts.config.MOSAIC_FEATURES, 'Captcha']
+                : opts.config.MOSAIC_FEATURES
             ),
             type: 'Selfhosted',
             initialized: await opts.auth.isInitialized(),

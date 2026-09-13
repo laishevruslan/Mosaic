@@ -19,6 +19,7 @@ export type BoardViewMeta = {
   groupByAxes?: BoardGroupByAxes;
   wipLimits?: BoardWipLimits;
   laneFilter?: string;
+  milestones?: Array<{ id: string; at: string; title: string }>;
 };
 
 export function parseTasks(value: unknown): BoardTask[] {

@@ -571,6 +571,29 @@ export function applyTimeLog(
   datasource.cellValueChange(rowId, timeId, next);
 }
 
+export function applyTimelineDates(
+  store: Store,
+  databaseId: string,
+  rowId: string,
+  startAt: string,
+  endAt: string
+) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const startId =
+    propertyByEnglishName(datasource, 'Start') ??
+    firstPropertyOfType(datasource, 'date');
+  const endId =
+    propertyByEnglishName(datasource, 'End') ??
+    propertyByEnglishName(datasource, 'Due') ??
+    startId;
+  if (!startId && !endId) return;
+  store.captureSync();
+  if (startId) datasource.cellValueChange(rowId, startId, startAt);
+  if (endId) datasource.cellValueChange(rowId, endId, endAt);
+}
+
 function checklistItems(store: Store, rowId: string) {
   return (store.getBlock(rowId)?.model.children ?? []).filter(child => {
     const props = child.props as { type?: string; checked?: boolean };
