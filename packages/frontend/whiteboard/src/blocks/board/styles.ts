@@ -299,6 +299,65 @@ export const boardBlockStyles = css`
     padding: 2px 8px;
   }
 
+  .wb-board--focus {
+    position: fixed;
+    inset: 24px;
+    z-index: 30;
+    width: auto !important;
+    height: auto !important;
+    max-width: none;
+  }
+
+  .wb-board-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--affine-border-color);
+    font-size: 12px;
+  }
+
+  .wb-board-toolbar button,
+  .wb-board-toolbar summary {
+    border: 1px solid var(--affine-border-color);
+    background: var(--affine-background-tertiary-color);
+    color: var(--affine-text-primary-color);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .wb-board-toolbar__menu {
+    position: relative;
+  }
+
+  .wb-board-toolbar__menu label,
+  .wb-board-toolbar__menu button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+  }
+
+  .wb-board-toolbar__hint {
+    color: var(--affine-text-secondary-color);
+  }
+
+  .wb-board__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .wb-board__table th,
+  .wb-board__table td {
+    border-bottom: 1px solid var(--affine-border-color);
+    padding: 6px 8px;
+    text-align: left;
+  }
+
   .wb-board--l0 .wb-board__column {
     min-height: 72px;
   }

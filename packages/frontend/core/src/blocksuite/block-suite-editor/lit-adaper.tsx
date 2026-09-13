@@ -100,6 +100,9 @@ const usePatchSpecs = (mode: DocMode, shared?: boolean) => {
   const enableWhiteboardCollab = useLiveData(
     featureFlagService.flags.enable_whiteboard_collab.$
   );
+  const enableWhiteboardFacilitation = useLiveData(
+    featureFlagService.flags.enable_whiteboard_facilitation.$
+  );
   const enableWorkshopChrome = useLiveData(
     featureFlagService.flags.enable_workshop_chrome.$
   );
@@ -152,6 +155,7 @@ const usePatchSpecs = (mode: DocMode, shared?: boolean) => {
         enablePerfHud: enableWhiteboardPerfHud,
         enableL0Layer: enableWhiteboardL0Layer,
         enableCollab: enableWhiteboardCollab,
+        enableFacilitation: enableWhiteboardFacilitation,
         enableWorkshopChrome,
         reactToLit,
       }).value;
@@ -178,6 +182,7 @@ const usePatchSpecs = (mode: DocMode, shared?: boolean) => {
     enableWhiteboardPerfHud,
     enableWhiteboardL0Layer,
     enableWhiteboardCollab,
+    enableWhiteboardFacilitation,
     enableWorkshopChrome,
     framework,
     isInPeekView,

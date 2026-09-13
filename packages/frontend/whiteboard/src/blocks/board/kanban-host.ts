@@ -28,7 +28,8 @@ import { detach } from '../../detach';
 
 export function createBoardKanbanLogic(
   std: BlockStdScope,
-  database: DatabaseBlockModel
+  database: DatabaseBlockModel,
+  preferredType: 'kanban' | 'table' = 'kanban'
 ) {
   const virtualPadding$ = signal(0);
   // `DataViewRootUILogic` has no teardown of its own: the hotkey and event
@@ -38,11 +39,15 @@ export function createBoardKanbanLogic(
     const source = new DatabaseBlockDataSource(database, next => {
       next.serviceSet(EditorHostKey, std.host);
     });
-    const kanban = source.viewManager.views$.value.find(id => {
+    const preferred = source.viewManager.views$.value.find(id => {
+      return source.viewManager.viewGet(id)?.type === preferredType;
+    });
+    const fallback = source.viewManager.views$.value.find(id => {
       return source.viewManager.viewGet(id)?.type === 'kanban';
     });
-    if (kanban) {
-      source.viewManager.setCurrentView(kanban);
+    const current = preferred ?? fallback;
+    if (current) {
+      source.viewManager.setCurrentView(current);
     }
     return source;
   });

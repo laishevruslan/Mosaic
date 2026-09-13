@@ -22,6 +22,7 @@ export type BoardLodHandlers = {
   onComment?: (rowId: string) => void;
   onLogTime?: (rowId: string) => void;
   onToggleTask?: (rowId: string, index: number) => void;
+  onPlaceCard?: (rowId: string) => void;
 };
 
 /** Vertical window state of every column body, keyed by `boardCellKey`. */
@@ -374,6 +375,21 @@ function renderCard(card: BoardCardPreview, handlers?: BoardLodHandlers) {
                 >
                   ${I18n['com.affine.whiteboard.board.log-time']()}
                 </button>
+                ${
+                  handlers.onPlaceCard
+                    ? html`<button
+                        type="button"
+                        class="wb-board__card-btn"
+                        data-testid="wb-board-place-card"
+                        @click=${(event: Event) => {
+                          event.stopPropagation();
+                          handlers.onPlaceCard?.(card.id);
+                        }}
+                      >
+                        ${I18n['com.affine.whiteboard.board.place-on-canvas']()}
+                      </button>`
+                    : nothing
+                }
               `
             : nothing
         }
@@ -393,4 +409,37 @@ export function boardLodKicker(level: BoardLodLevel, preview: boolean) {
     return I18n['com.affine.whiteboard.board.lod-l1']();
   }
   return I18n['com.affine.whiteboard.board.kicker']();
+}
+
+export function renderBoardTable(options: {
+  rows: Array<{ id: string; title: string; status?: string }>;
+  level: Exclude<BoardLodLevel, 'l2'>;
+  handlers?: BoardLodHandlers;
+}) {
+  const rows =
+    options.level === 'l0' ? options.rows.slice(0, 6) : options.rows.slice(0, 24);
+  return html`
+    <table class="wb-board__table" data-testid="wb-board-table">
+      <thead>
+        <tr>
+          <th>${I18n['com.affine.whiteboard.board.column.title']()}</th>
+          <th>${I18n['com.affine.whiteboard.board.column.status']()}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${repeat(
+          rows,
+          row => row.id,
+          row => html`
+            <tr
+              @click=${() => options.handlers?.onOpen?.(row.id)}
+            >
+              <td>${row.title}</td>
+              <td>${row.status ?? ''}</td>
+            </tr>
+          `
+        )}
+      </tbody>
+    </table>
+  `;
 }

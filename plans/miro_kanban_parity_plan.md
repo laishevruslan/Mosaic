@@ -439,6 +439,8 @@ type BoardTemplateDef = {
 
 **Критерий фазы C.** Из галереи ставится 14 досок, у каждой валидная schema, группировка, seed. Смена языка локализует названия колонок у **новых** инстансов (как сейчас `localizeColumnName`).
 
+**Статус кода (2026-09-13, фаза E1 enterprise-плана).** A+B+C в `@affine/whiteboard`: каталог 14 шаблонов, toolbar Kanban↔Table / Fields / Hide / Focus / CSV / synced+clone, ingest drag стикеров, live `wb:record-card`, clone копирует rows. Не закрыто здесь: FilterGroup в шапке, keyboard parity, C4 save-as-template, Timeline/AI/Jira (D–F), default-on флаг, live dual-browser e2e. SVG-превью Affine panel не делались — живой каталог в slash и dock Templates.
+
 ### Фаза D — Timeline layout (P1, 4–5 недель)
 
 Без Timeline «переключение views как в Miro» неполное. Calendar view **не замена**: у Miro bars, scale, drag-resize дат, milestones, dependencies.

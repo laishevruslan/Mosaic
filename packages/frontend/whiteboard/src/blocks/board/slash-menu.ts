@@ -1,21 +1,16 @@
 import { I18n } from '@affine/i18n';
 import { FeatureFlagService } from '@blocksuite/affine/shared/services';
-import { Text } from '@blocksuite/affine/store';
 import {
   type SlashMenuConfig,
   SlashMenuConfigExtension,
 } from '@blocksuite/affine/widgets/slash-menu';
 import { DatabaseKanbanViewIcon } from '@blocksuite/icons/lit';
 
-import { BOARD_WIDGET_SIZE, WHITEBOARD_FLAVOURS } from '../../const';
-import { insertGfxWidget } from '../../insert-widget';
-import {
-  createBoardDatabase,
-  ensureKanbanView,
-  findNearbyDatabaseId,
-} from './hub';
+import { WHITEBOARD_FLAVOURS } from '../../const';
+import { findNearbyDatabaseId } from './hub';
+import { insertBoardTemplate } from './insert-template';
 import { BoardBlockSchema } from './model';
-import type { BoardTemplate } from './types';
+import { BOARD_TEMPLATE_CATALOG, quickBoardTemplates } from './templates';
 
 const flavour = BoardBlockSchema.model.flavour;
 
@@ -26,60 +21,31 @@ const boardSlashMenuConfig: SlashMenuConfig = {
       std.get(FeatureFlagService).getFlag('enable_board_widget') &&
       !std.store.readonly;
 
-    const insert = (template: BoardTemplate, blockId?: string) => {
-      const title = I18n['com.affine.whiteboard.board.title']();
-      let created = blockId;
-      if (blockId) {
-        ensureKanbanView(std.store, blockId);
-      } else {
-        created = createBoardDatabase(std.store, {
-          title,
-          template,
-        })?.databaseId;
-      }
-      insertGfxWidget(
-        std,
-        flavour,
-        {
-          title: new Text(title),
-          linkedDocId: std.store.id,
-          blockId: created,
-          template,
-        },
-        BOARD_WIDGET_SIZE
-      );
-    };
+    const quick = quickBoardTemplates().map((def, index) => ({
+      name: I18n[def.titleKey](),
+      description: I18n[def.descriptionKey](),
+      icon: DatabaseKanbanViewIcon(),
+      searchAlias: ['kanban', 'board', 'wb:board', 'канбан', 'доска', def.id],
+      group: `4_Content & Media@${15 + index * 0.3}`,
+      when: () => enabled,
+      action: () => insertBoardTemplate(std, def.id),
+    }));
+
+    const extra = BOARD_TEMPLATE_CATALOG.filter(
+      def => !quick.some(item => item.searchAlias.includes(def.id))
+    ).map((def, index) => ({
+      name: I18n[def.titleKey](),
+      description: I18n[def.descriptionKey](),
+      icon: DatabaseKanbanViewIcon(),
+      searchAlias: ['kanban', 'template', def.id, 'шаблон'],
+      group: `4_Content & Media@${16.5 + index * 0.05}`,
+      when: () => enabled,
+      action: () => insertBoardTemplate(std, def.id),
+    }));
 
     return [
-      {
-        name: I18n['com.affine.whiteboard.board.slash-name'](),
-        description: I18n['com.affine.whiteboard.board.slash-description'](),
-        icon: DatabaseKanbanViewIcon(),
-        searchAlias: ['kanban', 'board', 'wb:board', 'канбан', 'доска'],
-        group: '4_Content & Media@15',
-        when: () => enabled,
-        action: () => insert('todo'),
-      },
-      {
-        name: I18n['com.affine.whiteboard.board.template-project'](),
-        description:
-          I18n['com.affine.whiteboard.board.template-project-description'](),
-        icon: DatabaseKanbanViewIcon(),
-        searchAlias: ['project tracking', 'проект', 'канбан'],
-        group: '4_Content & Media@16',
-        when: () => enabled,
-        action: () => insert('project'),
-      },
-      {
-        name: I18n['com.affine.whiteboard.board.template-swimlanes'](),
-        description:
-          I18n['com.affine.whiteboard.board.template-swimlanes-description'](),
-        icon: DatabaseKanbanViewIcon(),
-        searchAlias: ['swimlanes', 'дорожки', 'planka'],
-        group: '4_Content & Media@16.5',
-        when: () => enabled,
-        action: () => insert('swimlane'),
-      },
+      ...quick,
+      ...extra,
       {
         name: I18n['com.affine.whiteboard.board.from-table'](),
         description:
@@ -89,7 +55,11 @@ const boardSlashMenuConfig: SlashMenuConfig = {
         group: '4_Content & Media@17',
         when: () => enabled && !!findNearbyDatabaseId(std.store, model.id),
         action: ({ std, model }) => {
-          insert('todo', findNearbyDatabaseId(std.store, model.id));
+          insertBoardTemplate(
+            std,
+            'todo',
+            findNearbyDatabaseId(std.store, model.id)
+          );
         },
       },
     ];

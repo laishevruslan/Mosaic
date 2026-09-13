@@ -383,6 +383,16 @@ export const AFFINE_FLAGS = {
     configurable: true,
     defaultState: false,
   },
+  enable_whiteboard_facilitation: {
+    category: 'blocksuite',
+    bsFlag: 'enable_whiteboard_facilitation',
+    displayName:
+      'com.affine.settings.workspace.experimental-features.enable-whiteboard-facilitation.name',
+    description:
+      'com.affine.settings.workspace.experimental-features.enable-whiteboard-facilitation.description',
+    configurable: true,
+    defaultState: false,
+  },
   enable_workshop_chrome: {
     category: 'blocksuite',
     bsFlag: 'enable_workshop_chrome',

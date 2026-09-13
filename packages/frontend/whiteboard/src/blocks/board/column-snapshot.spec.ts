@@ -94,4 +94,40 @@ describe('board column snapshot', () => {
     expect(snapshot.rows[0]?.commentId).toBe('cmt-1');
     expect(snapshot.rows[0]?.commentIds).toEqual(['cmt-1']);
   });
+
+  it('hides a group via groupProperties without dropping the option from schema', () => {
+    const columns = readBoardColumns({
+      columns: [
+        {
+          id: 'status',
+          type: 'select',
+          name: 'Status',
+          data: {
+            options: [
+              { id: 'todo', value: 'To do' },
+              { id: 'done', value: 'Done' },
+            ],
+          },
+        },
+      ],
+      cells: {
+        r1: { status: { value: 'todo' } },
+        r2: { status: { value: 'done' } },
+      },
+      views: [
+        {
+          id: 'kanban',
+          mode: 'kanban',
+          groupBy: { columnId: 'status' },
+          groupProperties: [{ key: 'done', hide: true }],
+        },
+      ],
+      rows: [
+        { id: 'r1', title: 'Open' },
+        { id: 'r2', title: 'Finished' },
+      ],
+    });
+    expect(columns.map(column => column.id)).toEqual(['todo']);
+    expect(columns[0]?.count).toBe(1);
+  });
 });

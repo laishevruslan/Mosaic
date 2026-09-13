@@ -13,5 +13,8 @@ describe('board widget RBAC', () => {
     expect(
       canEditBoardWidgets({ readonly: false }, { lockedBySelf: false })
     ).toBe(true);
+    expect(
+      canEditBoardWidgets({ readonly: false }, { lockedBySelf: false }, true)
+    ).toBe(false);
   });
 });

@@ -1,50 +1,80 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  columnsForTemplate,
+  BOARD_TEMPLATE_CATALOG,
+  BOARD_TEMPLATE_IDS,
+  boardTemplateDef,
   isBoardTemplate,
-  PROJECT_COLUMNS,
-  TODO_COLUMNS,
-  TODO_STATUS_OPTIONS,
-} from './types';
+  resolveBoardTemplateId,
+} from './templates';
+import { DEFAULT_BOARD_FIELDS } from './templates/schema';
+import { TODO_STATUS_OPTIONS } from './types';
 
 describe('wb:board templates', () => {
-  it('seeds a To do / In progress / Done status column', () => {
-    expect(columnsForTemplate('todo')).toEqual(TODO_COLUMNS);
+  it('ships 14 catalog workflows with default Miro fields', () => {
+    expect(BOARD_TEMPLATE_IDS).toHaveLength(14);
+    expect(BOARD_TEMPLATE_CATALOG).toHaveLength(14);
+    const required = DEFAULT_BOARD_FIELDS.map(column => column.name);
+    for (const def of BOARD_TEMPLATE_CATALOG) {
+      const names = def.columns.map(column => column.name);
+      expect(names).toContain('Status');
+      for (const field of required) {
+        expect(names).toContain(field);
+      }
+      expect(def.seedRows.length).toBeGreaterThanOrEqual(3);
+      expect(def.groupBy.x).toBeTruthy();
+      expect(def.layout === 'kanban' || def.layout === 'table').toBe(true);
+    }
+  });
+
+  it('keeps legacy todo/project/swimlane aliases', () => {
+    expect(resolveBoardTemplateId('todo')).toBe('kanban-framework');
+    expect(resolveBoardTemplateId('project')).toBe('project-tracking');
+    expect(resolveBoardTemplateId('swimlane')).toBe('swimlane-by-assignee');
+    expect(isBoardTemplate('todo')).toBe(true);
+    expect(isBoardTemplate('bug-tracker')).toBe(true);
+    expect(isBoardTemplate('nope')).toBe(false);
+  });
+
+  it('seeds To do / In progress / Done with a WIP cap', () => {
+    const framework = boardTemplateDef('todo');
+    expect(framework.wipLimits?.['In progress']).toBe(3);
     expect(TODO_STATUS_OPTIONS.map(option => option.value)).toEqual([
+      'To do',
+      'In progress',
+      'Done',
+    ]);
+    const status = framework.columns.find(column => column.name === 'Status');
+    expect(status?.options?.map(option => option.value)).toEqual([
       'To do',
       'In progress',
       'Done',
     ]);
   });
 
-  it('seeds project tracking columns already supported by data-view', () => {
-    const names = columnsForTemplate('project').map(column => column.name);
-    expect(names).toEqual([
-      'Status',
-      'Assignee',
-      'Due',
-      'Labels',
-      'Cover',
-      'Time spent',
-      'Started',
-      'Files',
-    ]);
-    expect(PROJECT_COLUMNS.some(column => column.type === 'number')).toBe(true);
-    expect(PROJECT_COLUMNS.some(column => column.type === 'attachment')).toBe(
-      true
+  it('seeds project tracking with labels, cover and estimation', () => {
+    const names = boardTemplateDef('project').columns.map(column => column.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'Status',
+        'Assignee',
+        'Labels',
+        'Cover',
+        'Time spent',
+        'Estimation',
+        'Priority',
+      ])
     );
-    expect(PROJECT_COLUMNS.some(column => column.type === 'member')).toBe(true);
-    expect(PROJECT_COLUMNS.some(column => column.type === 'date')).toBe(true);
-    expect(PROJECT_COLUMNS.some(column => column.type === 'multi-select')).toBe(
-      true
-    );
-    expect(PROJECT_COLUMNS.some(column => column.type === 'image')).toBe(true);
   });
 
-  it('accepts only known template ids', () => {
-    expect(isBoardTemplate('todo')).toBe(true);
-    expect(isBoardTemplate('project')).toBe(true);
-    expect(isBoardTemplate('swimlane')).toBe(true);
+  it('uses swimlanes on assignee and class-of-service boards', () => {
+    expect(boardTemplateDef('swimlane').groupBy).toEqual({
+      x: 'Status',
+      y: 'Assignee',
+    });
+    expect(boardTemplateDef('swimlane-by-priority').groupBy.y).toBe(
+      'Class of service'
+    );
+    expect(boardTemplateDef('weekly-standup').groupBy.y).toBe('Assignee');
   });
 });

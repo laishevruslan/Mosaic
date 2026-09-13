@@ -5,8 +5,13 @@ import {
   canFollow,
   followViewport,
   isAttentionActive,
+  isLaserActive,
   isRemoteEditing,
+  isSummonActive,
+  LASER_TTL_MS,
   makeAttention,
+  makeLaser,
+  makeSummon,
   mergePayload,
   readPeers,
   remoteEditors,
@@ -82,6 +87,17 @@ describe('whiteboard collab protocol', () => {
     );
     expect(merged.viewport).toBeUndefined();
     expect('viewport' in merged).toBe(false);
+  });
+
+  it('expires laser and summon TTLs independently of attention', () => {
+    const now = 2_000;
+    expect(isLaserActive(makeLaser({ x: 1, y: 1 }, now), now + 10)).toBe(true);
+    expect(
+      isLaserActive(makeLaser({ x: 1, y: 1 }, now), now + LASER_TTL_MS + 1)
+    ).toBe(false);
+    const summon = makeSummon({ x: 0, y: 0, zoom: 1 }, now);
+    expect(isSummonActive(summon, now + 10)).toBe(true);
+    expect(isSummonActive(summon, summon.until + 1)).toBe(false);
   });
 
   it('refuses a follow that would close a loop', () => {

@@ -6,6 +6,8 @@ import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
+import { insertBoardTemplate } from '../blocks/board/insert-template';
+import { BOARD_TEMPLATE_CATALOG } from '../blocks/board/templates';
 import { WHITEBOARD_FLAVOURS } from '../const';
 import { getMosaicBoard } from '../sdk/from-std';
 import type { MosaicFrameInfo, MosaicPanelId } from '../sdk/types';
@@ -181,7 +183,7 @@ export class MosaicBoardPanelHost extends WidgetComponent<RootBlockModel> {
 
   private open(id: MosaicPanelId) {
     this.board.ui.openPanel({ id });
-    if (id === 'templates') this.ensureAffine();
+    if (id === 'templates') this.ensureAffine().catch(() => {});
   }
 
   private catalogLabel(key: string) {
@@ -241,6 +243,26 @@ export class MosaicBoardPanelHost extends WidgetComponent<RootBlockModel> {
     `;
   }
 
+  private renderKanbanCatalog() {
+    if (!this.std.store.schema.flavourSchemaMap.has(WHITEBOARD_FLAVOURS.board)) {
+      return nothing;
+    }
+    return html`
+      <div class="group">
+        ${I18n['com.affine.whiteboard.chrome.templates.group.kanban']()}
+      </div>
+      ${BOARD_TEMPLATE_CATALOG.map(
+        def => html`<button
+          type="button"
+          data-testid=${`mosaic-kanban-${def.id}`}
+          @click=${() => insertBoardTemplate(this.std, def.id)}
+        >
+          ${I18n[def.titleKey]()}
+        </button>`
+      )}
+    `;
+  }
+
   private renderTemplates() {
     return html`
       <p class="hint">
@@ -248,6 +270,7 @@ export class MosaicBoardPanelHost extends WidgetComponent<RootBlockModel> {
       </p>
       ${this.renderCatalogGroup('frames')}
       ${this.renderCatalogGroup('stickers')}
+      ${this.renderKanbanCatalog()}
       ${
         this.affineCategories.length
           ? html`<div class="group">
@@ -263,7 +286,9 @@ export class MosaicBoardPanelHost extends WidgetComponent<RootBlockModel> {
                       type="button"
                       data-testid="mosaic-template-affine-${item.name}"
                       @click=${() => {
-                        void insertAffineTemplate(this.std, item.template);
+                        insertAffineTemplate(this.std, item.template).catch(
+                          () => {}
+                        );
                       }}
                     >
                       ${item.name}
@@ -287,7 +312,7 @@ export class MosaicBoardPanelHost extends WidgetComponent<RootBlockModel> {
       board.ui.onPanelChange(id => {
         this.panelId = id;
         if (id === 'frames') this.refreshFrames();
-        if (id === 'templates') this.ensureAffine();
+        if (id === 'templates') this.ensureAffine().catch(() => {});
       })
     );
     this.unsub.push(board.ui.onModalChange(() => this.requestUpdate()));

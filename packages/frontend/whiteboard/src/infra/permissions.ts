@@ -12,9 +12,11 @@ export function isBoardReadonly(
 
 export function canEditBoardWidgets(
   store: { readonly?: boolean } | null | undefined,
-  model?: { lockedBySelf?: boolean } | null
+  model?: { lockedBySelf?: boolean } | null,
+  facilitatorLocked?: boolean
 ) {
   if (isBoardReadonly(store)) return false;
   if (model?.lockedBySelf) return false;
+  if (facilitatorLocked) return false;
   return true;
 }

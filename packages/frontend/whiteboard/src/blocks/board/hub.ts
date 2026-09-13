@@ -6,18 +6,22 @@ import {
 } from '@blocksuite/affine/model';
 import { nanoid, type Store, Text } from '@blocksuite/affine/store';
 
+import { mapClonedCellValue } from './clone-cells';
 import {
   BOARD_CHECKLIST_COLUMN,
   isChecklistItem,
   nextChecklistCell,
 } from './semantics';
+import { boardTemplateDef } from './templates';
+import type { BoardTemplateDef } from './templates/schema';
 import {
   type BoardColumnSeed,
+  type BoardLayout,
   type BoardStatusOption,
   type BoardTemplate,
   type BoardViewData,
-  columnsForTemplate,
 } from './types';
+import { hiddenFieldColumns,hideGroupProperties } from './view-meta';
 
 export const BOARD_HUB_NOTE_FLAG = 'wb-board-data-hub';
 
@@ -25,6 +29,7 @@ export type CreatedBoardDatabase = {
   noteId: string;
   databaseId: string;
   viewId?: string;
+  tableViewId?: string;
 };
 
 type SelectOption = {
@@ -34,64 +39,106 @@ type SelectOption = {
 };
 
 function localizeColumnName(name: string): string {
-  switch (name) {
-    case 'Status':
-      return I18n['com.affine.whiteboard.board.column.status']();
-    case 'Assignee':
-      return I18n['com.affine.whiteboard.board.column.assignee']();
-    case 'Due':
-      return I18n['com.affine.whiteboard.board.column.due']();
-    case 'Labels':
-      return I18n['com.affine.whiteboard.board.column.labels']();
-    case 'Cover':
-      return I18n['com.affine.whiteboard.board.column.cover']();
-    case 'Time spent':
-      return I18n['com.affine.whiteboard.board.column.time-spent']();
-    case 'Started':
-      return I18n['com.affine.whiteboard.board.column.started']();
-    case 'Files':
-      return I18n['com.affine.whiteboard.board.column.files']();
-    default:
-      return name;
-  }
+  const key = COLUMN_I18N[name];
+  return key ? I18n[key]() : name;
 }
+
+const COLUMN_I18N: Record<string, string> = {
+  Status: 'com.affine.whiteboard.board.column.status',
+  Assignee: 'com.affine.whiteboard.board.column.assignee',
+  Due: 'com.affine.whiteboard.board.column.due',
+  Labels: 'com.affine.whiteboard.board.column.labels',
+  Cover: 'com.affine.whiteboard.board.column.cover',
+  'Time spent': 'com.affine.whiteboard.board.column.time-spent',
+  Started: 'com.affine.whiteboard.board.column.started',
+  Start: 'com.affine.whiteboard.board.column.start',
+  End: 'com.affine.whiteboard.board.column.end',
+  Files: 'com.affine.whiteboard.board.column.files',
+  Description: 'com.affine.whiteboard.board.column.description',
+  Estimation: 'com.affine.whiteboard.board.column.estimation',
+  Priority: 'com.affine.whiteboard.board.column.priority',
+  Goal: 'com.affine.whiteboard.board.column.goal',
+  Metric: 'com.affine.whiteboard.board.column.metric',
+  Severity: 'com.affine.whiteboard.board.column.severity',
+  Component: 'com.affine.whiteboard.board.column.component',
+  Repro: 'com.affine.whiteboard.board.column.repro',
+  Channel: 'com.affine.whiteboard.board.column.channel',
+  Persona: 'com.affine.whiteboard.board.column.persona',
+  'Publish date': 'com.affine.whiteboard.board.column.publish-date',
+  Role: 'com.affine.whiteboard.board.column.role',
+  Candidate: 'com.affine.whiteboard.board.column.candidate',
+  Amount: 'com.affine.whiteboard.board.column.amount',
+  Effort: 'com.affine.whiteboard.board.column.effort',
+  Value: 'com.affine.whiteboard.board.column.value',
+  Epic: 'com.affine.whiteboard.board.column.epic',
+  'Class of service': 'com.affine.whiteboard.board.column.class-of-service',
+};
 
 function localizeOptionValue(value: string): string {
-  switch (value) {
-    case 'To do':
-      return I18n['com.affine.whiteboard.board.status.todo']();
-    case 'In progress':
-      return I18n['com.affine.whiteboard.board.status.in-progress']();
-    case 'Done':
-      return I18n['com.affine.whiteboard.board.status.done']();
-    case 'Backlog':
-      return I18n['com.affine.whiteboard.board.status.backlog']();
-    case 'Review':
-      return I18n['com.affine.whiteboard.board.status.review']();
-    case 'Bug':
-      return I18n['com.affine.whiteboard.board.label.bug']();
-    case 'Feature':
-      return I18n['com.affine.whiteboard.board.label.feature']();
-    case 'Docs':
-      return I18n['com.affine.whiteboard.board.label.docs']();
-    default:
-      return value;
-  }
+  const key = OPTION_I18N[value];
+  return key ? I18n[key]() : value;
 }
 
-function seedTitles(template: BoardTemplate): string[] {
-  return template === 'project'
-    ? [
-        I18n['com.affine.whiteboard.board.seed.discovery'](),
-        I18n['com.affine.whiteboard.board.seed.build'](),
-        I18n['com.affine.whiteboard.board.seed.review'](),
-      ]
-    : [
-        I18n['com.affine.whiteboard.board.seed.task-1'](),
-        I18n['com.affine.whiteboard.board.seed.task-2'](),
-        I18n['com.affine.whiteboard.board.seed.task-3'](),
-      ];
-}
+const OPTION_I18N: Record<string, string> = {
+  'To do': 'com.affine.whiteboard.board.status.todo',
+  'In progress': 'com.affine.whiteboard.board.status.in-progress',
+  Done: 'com.affine.whiteboard.board.status.done',
+  Backlog: 'com.affine.whiteboard.board.status.backlog',
+  Review: 'com.affine.whiteboard.board.status.review',
+  'Not started': 'com.affine.whiteboard.board.status.not-started',
+  New: 'com.affine.whiteboard.board.status.new',
+  Triaged: 'com.affine.whiteboard.board.status.triaged',
+  'In fix': 'com.affine.whiteboard.board.status.in-fix',
+  QA: 'com.affine.whiteboard.board.status.qa',
+  Closed: 'com.affine.whiteboard.board.status.closed',
+  Idea: 'com.affine.whiteboard.board.status.idea',
+  Writing: 'com.affine.whiteboard.board.status.writing',
+  Scheduled: 'com.affine.whiteboard.board.status.scheduled',
+  Published: 'com.affine.whiteboard.board.status.published',
+  Applied: 'com.affine.whiteboard.board.status.applied',
+  Screen: 'com.affine.whiteboard.board.status.screen',
+  Interview: 'com.affine.whiteboard.board.status.interview',
+  Offer: 'com.affine.whiteboard.board.status.offer',
+  Hired: 'com.affine.whiteboard.board.status.hired',
+  Lead: 'com.affine.whiteboard.board.status.lead',
+  Qualified: 'com.affine.whiteboard.board.status.qualified',
+  Proposal: 'com.affine.whiteboard.board.status.proposal',
+  Negotiation: 'com.affine.whiteboard.board.status.negotiation',
+  Won: 'com.affine.whiteboard.board.status.won',
+  Lost: 'com.affine.whiteboard.board.status.lost',
+  Icebox: 'com.affine.whiteboard.board.status.icebox',
+  Ready: 'com.affine.whiteboard.board.status.ready',
+  'In sprint': 'com.affine.whiteboard.board.status.in-sprint',
+  Now: 'com.affine.whiteboard.board.status.now',
+  Next: 'com.affine.whiteboard.board.status.next',
+  Later: 'com.affine.whiteboard.board.status.later',
+  Yesterday: 'com.affine.whiteboard.board.status.yesterday',
+  Today: 'com.affine.whiteboard.board.status.today',
+  Blocked: 'com.affine.whiteboard.board.status.blocked',
+  'Urgent-Important': 'com.affine.whiteboard.board.status.urgent-important',
+  'Urgent-Not important':
+    'com.affine.whiteboard.board.status.urgent-not-important',
+  'Not urgent-Important':
+    'com.affine.whiteboard.board.status.not-urgent-important',
+  Neither: 'com.affine.whiteboard.board.status.neither',
+  Bug: 'com.affine.whiteboard.board.label.bug',
+  Feature: 'com.affine.whiteboard.board.label.feature',
+  Docs: 'com.affine.whiteboard.board.label.docs',
+  High: 'com.affine.whiteboard.board.priority.high',
+  Medium: 'com.affine.whiteboard.board.priority.medium',
+  Low: 'com.affine.whiteboard.board.priority.low',
+  Critical: 'com.affine.whiteboard.board.severity.critical',
+  Major: 'com.affine.whiteboard.board.severity.major',
+  Minor: 'com.affine.whiteboard.board.severity.minor',
+  Expedite: 'com.affine.whiteboard.board.class.expedite',
+  Standard: 'com.affine.whiteboard.board.class.standard',
+  Intangible: 'com.affine.whiteboard.board.class.intangible',
+  Blog: 'com.affine.whiteboard.board.channel.blog',
+  Social: 'com.affine.whiteboard.board.channel.social',
+  Email: 'com.affine.whiteboard.board.channel.email',
+  Platform: 'com.affine.whiteboard.board.epic.platform',
+  Growth: 'com.affine.whiteboard.board.epic.growth',
+};
 
 function addSelectOptions(
   datasource: DatabaseBlockDataSource,
@@ -154,64 +201,85 @@ function seedChecklist(store: Store, rowId: string) {
   );
 }
 
-function seedCards(
+function propertyByEnglishName(
+  datasource: DatabaseBlockDataSource,
+  englishName: string
+) {
+  const localized = localizeColumnName(englishName);
+  return datasource.properties$.value.find(id => {
+    return datasource.propertyNameGet(id) === localized;
+  });
+}
+
+function optionByEnglishValue(
+  datasource: DatabaseBlockDataSource,
+  propertyId: string,
+  english: string
+) {
+  const localized = localizeOptionValue(english).toLowerCase();
+  return selectOptions(datasource, propertyId).find(
+    option => option.value.toLowerCase() === localized
+  );
+}
+
+function seedTemplateRows(
   store: Store,
   datasource: DatabaseBlockDataSource,
-  titles: string[],
-  withChecklist: boolean
+  def: BoardTemplateDef
 ) {
-  const statusId = firstPropertyOfType(datasource, 'select');
-  const options = statusId ? selectOptions(datasource, statusId) : [];
-
-  titles.forEach((title, index) => {
+  const withChecklist = def.id !== 'kanban-framework';
+  for (const row of def.seedRows) {
     const rowId = datasource.rowAdd('end');
-    const row = store.getBlock(rowId)?.model;
-    const text = (row?.props as { text?: Text } | undefined)?.text;
-    if (text) {
+    const model = store.getBlock(rowId)?.model;
+    const text = (model?.props as { text?: Text } | undefined)?.text;
+    const title = I18n[row.titleKey]();
+    if (text && title) {
       text.insert(title, 0);
     }
-    const option = statusId ? options[index % options.length] : undefined;
-    if (statusId && option) {
-      datasource.cellValueChange(rowId, statusId, option.id);
+    for (const [field, value] of Object.entries(row.cells ?? {})) {
+      const propertyId = propertyByEnglishName(datasource, field);
+      if (!propertyId) continue;
+      const type = datasource.propertyTypeGet(propertyId);
+      if (type === 'select' && typeof value === 'string') {
+        const option = optionByEnglishValue(datasource, propertyId, value);
+        if (option) datasource.cellValueChange(rowId, propertyId, option.id);
+      } else if (type === 'number' && typeof value === 'number') {
+        datasource.cellValueChange(rowId, propertyId, value);
+      } else if (typeof value === 'string') {
+        datasource.cellValueChange(rowId, propertyId, value);
+      }
     }
     if (withChecklist) {
       seedChecklist(store, rowId);
     }
-  });
+  }
 }
 
 function applyBoardSemantics(
   datasource: DatabaseBlockDataSource,
   viewId: string | undefined,
-  template: BoardTemplate
+  def: BoardTemplateDef
 ) {
   if (!viewId) return;
-  const statusId = firstPropertyOfType(datasource, 'select');
-  const memberId = firstPropertyOfType(datasource, 'member');
-  const inProgress = statusId
-    ? selectOptions(datasource, statusId).find(option => {
-        const value = option.value.toLowerCase();
-        return (
-          value === 'in progress' ||
-          value ===
-            I18n[
-              'com.affine.whiteboard.board.status.in-progress'
-            ]().toLowerCase()
-        );
-      })
+  const xId = propertyByEnglishName(datasource, def.groupBy.x);
+  const yId = def.groupBy.y
+    ? propertyByEnglishName(datasource, def.groupBy.y)
     : undefined;
-  // Only the dedicated swimlane template opts into the second axis; `project`
-  // keeps a single axis so it renders through the data-view kanban (Atlaskit
-  // DnD) rather than the custom two-axis grid.
-  const enableLanes = template === 'swimlane' && !!memberId;
+  const wipLimits: Record<string, number> = {};
+  if (def.wipLimits && xId) {
+    for (const [name, limit] of Object.entries(def.wipLimits)) {
+      const option = optionByEnglishValue(datasource, xId, name);
+      if (option) wipLimits[option.id] = limit;
+    }
+  }
 
   datasource.viewDataUpdate<BoardViewData>(viewId, () => ({
-    groupByY: enableLanes && memberId ? { columnId: memberId } : undefined,
+    groupByY: yId ? { columnId: yId } : undefined,
     groupByAxes: {
-      x: statusId,
-      y: enableLanes ? memberId : undefined,
+      x: xId,
+      y: yId,
     },
-    wipLimits: inProgress ? { [inProgress.id]: 3 } : {},
+    wipLimits,
   }));
 }
 
@@ -233,10 +301,21 @@ function asDatabase(
   return model as DatabaseBlockModel;
 }
 
-export function findKanbanViewId(datasource: DatabaseBlockDataSource) {
+export function findViewId(
+  datasource: DatabaseBlockDataSource,
+  type: string
+) {
   return datasource.viewManager.views$.value.find(id => {
-    return datasource.viewManager.viewGet(id)?.type === 'kanban';
+    return datasource.viewManager.viewGet(id)?.type === type;
   });
+}
+
+export function findKanbanViewId(datasource: DatabaseBlockDataSource) {
+  return findViewId(datasource, 'kanban');
+}
+
+export function findTableViewId(datasource: DatabaseBlockDataSource) {
+  return findViewId(datasource, 'table');
 }
 
 export function ensureKanbanView(store: Store, databaseId: string) {
@@ -255,6 +334,33 @@ export function ensureKanbanView(store: Store, databaseId: string) {
   }
 }
 
+export function ensureTableView(store: Store, databaseId: string) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const existing = findTableViewId(datasource);
+  if (existing) {
+    datasource.viewManager.setCurrentView(existing);
+    return existing;
+  }
+  try {
+    return datasource.viewManager.viewAdd('table');
+  } catch {
+    return;
+  }
+}
+
+function addView(
+  datasource: DatabaseBlockDataSource,
+  type: 'kanban' | 'table'
+) {
+  try {
+    return datasource.viewManager.viewAdd(type);
+  } catch {
+    return;
+  }
+}
+
 export function createBoardDatabase(
   store: Store,
   options: {
@@ -265,6 +371,7 @@ export function createBoardDatabase(
   const root = store.root;
   if (!root) return;
 
+  const def = boardTemplateDef(options.template);
   store.captureSync();
 
   const noteId = store.addBlock(
@@ -293,24 +400,103 @@ export function createBoardDatabase(
   }
 
   const datasource = new DatabaseBlockDataSource(database);
-  seedColumns(datasource, columnsForTemplate(options.template));
+  seedColumns(datasource, def.columns);
 
-  let viewId: string | undefined;
-  try {
-    viewId = datasource.viewManager.viewAdd('kanban');
-  } catch {
-    viewId = undefined;
-  }
+  const viewId = addView(datasource, 'kanban');
+  const tableViewId = addView(datasource, 'table');
   applyCoverColumn(datasource, viewId);
-  applyBoardSemantics(datasource, viewId, options.template);
-  seedCards(
-    store,
-    datasource,
-    seedTitles(options.template),
-    options.template !== 'todo'
-  );
+  applyBoardSemantics(datasource, viewId, def);
+  if (viewId) {
+    datasource.viewManager.setCurrentView(viewId);
+  }
+  seedTemplateRows(store, datasource, def);
 
-  return { noteId, databaseId, viewId };
+  return { noteId, databaseId, viewId, tableViewId };
+}
+
+export function setBoardLayout(
+  store: Store,
+  databaseId: string,
+  layout: BoardLayout
+) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const type = layout === 'table' ? 'table' : 'kanban';
+  const existing = findViewId(datasource, type);
+  const viewId = existing ?? addView(datasource, type);
+  if (viewId) datasource.viewManager.setCurrentView(viewId);
+  return viewId;
+}
+
+export function hideBoardGroup(
+  store: Store,
+  databaseId: string,
+  groupKey: string,
+  hide: boolean
+) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const viewId = findKanbanViewId(datasource);
+  if (!viewId) return;
+  store.captureSync();
+  datasource.viewDataUpdate<BoardViewData>(viewId, old => ({
+    groupProperties: hideGroupProperties(old.groupProperties, groupKey, hide),
+  }));
+}
+
+export function hideBoardField(
+  store: Store,
+  databaseId: string,
+  fieldId: string,
+  hide: boolean
+) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const viewId = findKanbanViewId(datasource);
+  if (!viewId) return;
+  store.captureSync();
+  datasource.viewDataUpdate<BoardViewData>(viewId, old => ({
+    columns: hiddenFieldColumns(old.columns, fieldId, hide),
+  }));
+}
+
+export function ingestRowTitle(
+  store: Store,
+  databaseId: string,
+  title: string,
+  patch?: {
+    xPropertyId?: string;
+    xValue?: string;
+    labels?: string[];
+    cells?: Record<string, unknown>;
+  }
+) {
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database || !title.trim()) return;
+  store.captureSync();
+  const datasource = new DatabaseBlockDataSource(database);
+  const rowId = datasource.rowAdd('end');
+  const model = store.getBlock(rowId)?.model;
+  const text = (model?.props as { text?: Text } | undefined)?.text;
+  if (text) text.insert(title.trim(), 0);
+  if (patch?.xPropertyId && patch.xValue) {
+    datasource.cellValueChange(rowId, patch.xPropertyId, patch.xValue);
+  }
+  if (patch?.labels?.length) {
+    const labelsId = propertyByEnglishName(datasource, 'Labels');
+    if (labelsId) {
+      datasource.cellValueChange(rowId, labelsId, patch.labels);
+    }
+  }
+  for (const [field, value] of Object.entries(patch?.cells ?? {})) {
+    const propertyId = propertyByEnglishName(datasource, field);
+    if (!propertyId || value == null) continue;
+    datasource.cellValueChange(rowId, propertyId, value);
+  }
+  return rowId;
 }
 
 export function applyCardMove(
@@ -455,4 +641,109 @@ export function resolveBoardDatabase(
   }
   if (!blockId) return;
   return store.getBlock(blockId)?.model;
+}
+
+export function createProjectionView(
+  store: Store,
+  databaseId: string,
+  layout: BoardLayout = 'kanban'
+) {
+  const type = layout === 'table' ? 'table' : 'kanban';
+  const database = asDatabase(store.getBlock(databaseId)?.model);
+  if (!database) return;
+  const datasource = new DatabaseBlockDataSource(database);
+  const viewId = addView(datasource, type);
+  if (viewId) datasource.viewManager.setCurrentView(viewId);
+  return viewId;
+}
+
+function copyDatabaseRecords(
+  store: Store,
+  source: DatabaseBlockModel,
+  dest: DatabaseBlockModel
+) {
+  const srcDs = new DatabaseBlockDataSource(source);
+  const destDs = new DatabaseBlockDataSource(dest);
+  for (const child of Array.from(dest.children)) {
+    store.deleteBlock(child);
+  }
+  for (const row of source.children) {
+    const newId = destDs.rowAdd('end');
+    const title = recordRowTitle(store, row.id);
+    if (title) {
+      const text = (store.getBlock(newId)?.model?.props as { text?: Text } | undefined)
+        ?.text;
+      if (text) text.insert(title, 0);
+    }
+    for (const column of source.props.columns) {
+      const destColumn = dest.props.columns.find(
+        item => item.name === column.name
+      );
+      if (!destColumn) continue;
+      const mapped = mapClonedCellValue({
+        srcType: srcDs.propertyTypeGet(column.id),
+        destType: destDs.propertyTypeGet(destColumn.id),
+        value: srcDs.cellValueGet(row.id, column.id),
+        srcOptions: selectOptions(srcDs, column.id),
+        destOptions: selectOptions(destDs, destColumn.id),
+      });
+      if (mapped != null) {
+        destDs.cellValueChange(newId, destColumn.id, mapped);
+      }
+    }
+    for (const child of row.children) {
+      if (child.flavour !== 'affine:list') continue;
+      const props = child.props as {
+        type?: string;
+        checked?: boolean;
+        text?: { toString?: () => string };
+      };
+      store.addBlock(
+        'affine:list',
+        {
+          type: props.type ?? 'todo',
+          text: new Text(props.text?.toString?.() ?? ''),
+          checked: !!props.checked,
+        },
+        newId
+      );
+    }
+  }
+}
+
+export function cloneBoardDatabase(
+  store: Store,
+  sourceDatabaseId: string,
+  title: string,
+  template: BoardTemplate
+) {
+  const source = asDatabase(store.getBlock(sourceDatabaseId)?.model);
+  const created = createBoardDatabase(store, { title, template });
+  if (!source || !created) return created;
+  const dest = asDatabase(store.getBlock(created.databaseId)?.model);
+  if (!dest) return created;
+  copyDatabaseRecords(store, source, dest);
+  return created;
+}
+
+export function renameRecordRow(
+  store: Store,
+  rowId: string,
+  title: string
+) {
+  const row = store.getBlock(rowId)?.model;
+  const text = (row?.props as { text?: Text } | undefined)?.text;
+  if (!text) return false;
+  store.captureSync();
+  const current = text.toString();
+  if (current) text.delete(0, current.length);
+  text.insert(title, 0);
+  return true;
+}
+
+export function recordRowTitle(store: Store, rowId: string) {
+  const row = store.getBlock(rowId)?.model;
+  const text = (row?.props as { text?: { toString?: () => string } } | undefined)
+    ?.text;
+  return text?.toString?.() ?? '';
 }

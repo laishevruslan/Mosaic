@@ -3,6 +3,8 @@ export const WHITEBOARD_AWARENESS_KEY = 'wbCollab';
 export const POINTER_THROTTLE_MS = 40;
 export const VIEWPORT_THROTTLE_MS = 80;
 export const ATTENTION_TTL_MS = 5000;
+export const LASER_TTL_MS = 800;
+export const SUMMON_TTL_MS = 4000;
 
 export type WbPointer = { x: number; y: number };
 export type WbViewport = { x: number; y: number; zoom: number };
@@ -15,6 +17,31 @@ export type WbAttention = {
 };
 export type WbEditing = { flavour: string; blockId: string };
 
+/** Shared countdown. `paused` keeps `remainingMs` instead of chasing `endsAt`. */
+export type WbTimer = {
+  endsAt: number;
+  durationMs: number;
+  paused?: boolean;
+  remainingMs?: number;
+  ownerClientId?: number;
+};
+
+export type WbLaser = { x: number; y: number; until: number };
+
+/** One-shot camera teleport; recipients apply each `id` at most once. */
+export type WbSummon = {
+  id: string;
+  x: number;
+  y: number;
+  zoom: number;
+  until: number;
+};
+
+export type WbPresentation = {
+  frameId: string | null;
+  index: number;
+};
+
 export type WhiteboardAwarenessPayload = {
   pointer?: WbPointer;
   followClientId?: number | null;
@@ -22,6 +49,12 @@ export type WhiteboardAwarenessPayload = {
   attention?: WbAttention;
   editing?: WbEditing;
   color?: string;
+  timer?: WbTimer;
+  laser?: WbLaser;
+  summon?: WbSummon;
+  privateMode?: boolean;
+  facilitatorLock?: boolean;
+  presentation?: WbPresentation;
 };
 
 export type WhiteboardPeer = {
@@ -33,6 +66,12 @@ export type WhiteboardPeer = {
   attention?: WbAttention;
   editing?: WbEditing;
   followClientId?: number | null;
+  laser?: WbLaser;
+  timer?: WbTimer;
+  summon?: WbSummon;
+  privateMode?: boolean;
+  facilitatorLock?: boolean;
+  presentation?: WbPresentation;
 };
 
 export type AwarenessLikeState = {
@@ -61,6 +100,34 @@ export function isAttentionActive(
   return (
     !!attention && attention.until > now && attention.w > 0 && attention.h > 0
   );
+}
+
+export function isLaserActive(laser: WbLaser | undefined, now = Date.now()) {
+  return !!laser && laser.until > now;
+}
+
+export function isSummonActive(
+  summon: WbSummon | undefined,
+  now = Date.now()
+) {
+  return !!summon && summon.until > now && !!summon.id;
+}
+
+export function makeLaser(
+  point: WbPointer,
+  now = Date.now(),
+  ttl = LASER_TTL_MS
+): WbLaser {
+  return { ...point, until: now + ttl };
+}
+
+export function makeSummon(
+  viewport: WbViewport,
+  now = Date.now(),
+  ttl = SUMMON_TTL_MS,
+  id = `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+): WbSummon {
+  return { id, ...viewport, until: now + ttl };
 }
 
 export function makeAttention(
@@ -129,6 +196,14 @@ export function readPeers(
         : undefined,
       editing: payload?.editing,
       followClientId: payload?.followClientId ?? null,
+      laser: isLaserActive(payload?.laser, now) ? payload?.laser : undefined,
+      timer: payload?.timer,
+      summon: isSummonActive(payload?.summon, now)
+        ? payload?.summon
+        : undefined,
+      privateMode: payload?.privateMode,
+      facilitatorLock: payload?.facilitatorLock,
+      presentation: payload?.presentation,
     });
   });
   return peers;

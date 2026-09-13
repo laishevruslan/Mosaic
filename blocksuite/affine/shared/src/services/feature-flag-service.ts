@@ -28,6 +28,7 @@ export interface BlockSuiteFlags {
   enable_whiteboard_perf_hud: boolean;
   enable_whiteboard_l0_layer: boolean;
   enable_whiteboard_collab: boolean;
+  enable_whiteboard_facilitation: boolean;
   enable_workshop_chrome: boolean;
 }
 
@@ -61,6 +62,7 @@ export class FeatureFlagService extends StoreExtension {
     enable_whiteboard_perf_hud: false,
     enable_whiteboard_l0_layer: false,
     enable_whiteboard_collab: false,
+    enable_whiteboard_facilitation: false,
     enable_workshop_chrome: false,
   });
 

@@ -18,6 +18,13 @@ export {
   type WhiteboardCommentAnchor,
 } from './comment-anchor';
 export {
+  createdByOf,
+  formatTimer,
+  isFacilitatorLockedForPeer,
+  isPrivateHidden,
+  remainingTimerMs,
+} from './facilitation';
+export {
   labelForVersion,
   loadNamedVersions,
   type NamedVersionMap,
@@ -30,13 +37,30 @@ export {
   colorForPeer,
   followViewport,
   isAttentionActive,
+  isLaserActive,
   isRemoteEditing,
+  isSummonActive,
+  LASER_TTL_MS,
   makeAttention,
+  makeLaser,
+  makeSummon,
   POINTER_THROTTLE_MS,
   readPeers,
   remoteEditors,
   shouldPublish,
+  SUMMON_TTL_MS,
+  type WbLaser,
+  type WbSummon,
+  type WbTimer,
   WHITEBOARD_AWARENESS_KEY,
   type WhiteboardAwarenessPayload,
   type WhiteboardPeer,
 } from './protocol';
+export {
+  castVote,
+  DEFAULT_VOTE_DOTS,
+  getDocYjs,
+  readVoteSession,
+  startVoteSession,
+  tallyVotes,
+} from './vote-session';

@@ -2,7 +2,12 @@ import type { DataViewDataType } from '@blocksuite/affine/data-view';
 
 export const BOARD_TEMPLATES = ['todo', 'project', 'swimlane'] as const;
 
-export type BoardTemplate = (typeof BOARD_TEMPLATES)[number];
+/** Catalog id or a legacy alias (`todo` / `project` / `swimlane`). */
+export type BoardTemplate = string;
+
+export type BoardLayout = 'kanban' | 'table' | 'timeline' | 'calendar';
+
+export type BoardSyncMode = 'owned' | 'projection';
 
 /**
  * Whiteboard-owned additions to the kanban view data. `viewDataUpdate` is
@@ -17,6 +22,8 @@ export type BoardViewData = DataViewDataType & {
   /** Restricts the board to a single swimlane. */
   laneFilter?: string;
   header?: Record<string, unknown> & { coverColumn?: string };
+  columns?: Array<{ id: string; hide?: boolean }>;
+  groupProperties?: Array<{ key: string; hide?: boolean; manuallyCardSort?: string[] }>;
 };
 
 export type BoardStatusOption = {
@@ -42,34 +49,3 @@ export const PROJECT_STATUS_OPTIONS: BoardStatusOption[] = [
   { value: 'Review', color: 'var(--affine-tag-purple)' },
   { value: 'Done', color: 'var(--affine-tag-green)' },
 ];
-
-export const TODO_COLUMNS: BoardColumnSeed[] = [
-  { type: 'select', name: 'Status', options: TODO_STATUS_OPTIONS },
-];
-
-export const PROJECT_COLUMNS: BoardColumnSeed[] = [
-  { type: 'select', name: 'Status', options: PROJECT_STATUS_OPTIONS },
-  { type: 'member', name: 'Assignee' },
-  { type: 'date', name: 'Due' },
-  {
-    type: 'multi-select',
-    name: 'Labels',
-    options: [
-      { value: 'Bug', color: 'var(--affine-tag-red)' },
-      { value: 'Feature', color: 'var(--affine-tag-blue)' },
-      { value: 'Docs', color: 'var(--affine-tag-teal)' },
-    ],
-  },
-  { type: 'image', name: 'Cover' },
-  { type: 'number', name: 'Time spent' },
-  { type: 'date', name: 'Started' },
-  { type: 'attachment', name: 'Files' },
-];
-
-export function columnsForTemplate(template: BoardTemplate): BoardColumnSeed[] {
-  return template === 'todo' ? TODO_COLUMNS : PROJECT_COLUMNS;
-}
-
-export function isBoardTemplate(value: unknown): value is BoardTemplate {
-  return value === 'todo' || value === 'project' || value === 'swimlane';
-}

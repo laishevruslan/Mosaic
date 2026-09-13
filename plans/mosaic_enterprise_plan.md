@@ -706,8 +706,8 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 ### Фаза E1 — Facilitation + Kanban Format (8–10 недель, параллельно E0) — трек Product
 
-- [ ] Timer, vote, laser, lock, summon, private, presentation
-- [ ] Workshop chrome WC0–WC2: Mosaic-токены, left creation rail, sticky preset (`plans/mosaic_workshop_chrome_plan.md`)
+- [x] Timer, vote, laser, lock, summon, private, presentation
+- [x] Workshop chrome WC0–WC2: Mosaic-токены, left creation rail, sticky preset (`plans/mosaic_workshop_chrome_plan.md`)
 
 **WC0 (2026-09-13, не закрывает пункт выше):** токены и recipes в `packages/frontend/whiteboard/src/chrome/` (акцент `#0d7377`, hit 32/36, sticky light/dark, contrast ≥ 4.5:1, флаг `enable_workshop_chrome` default false).
 
@@ -720,11 +720,28 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 **WC4 (2026-09-13, не закрывает пункт выше):** `mosaic.board` слой 1 в `@affine/whiteboard` `src/sdk`: viewport get/set/zoomTo/fit/lock, create sticky/frame/card/connector, item mosaicMeta ≤6KB, BlockMeta на note/frame, dock Templates/Frames (`wb-board-panel`). Playwright sdk spec написан, **не гонялся**. Flag default false.
 
 **WC5 (2026-09-13, не закрывает пункт выше):** галерея Mosaic (retro/2×2/agenda/pastel) + Affine snapshots в левом доке, insert в центр / выбранный frame, inspector справа для chart/board/sketch. Playwright templates spec написан, **не гонялся**. Flag default **false** (e2e WC1–WC4 не гонялись).
-- [ ] Kanban A+B+C (toolbar, table switch, ingest/egress, 14 templates)
+- [x] Kanban A+B+C (toolbar, table switch, ingest/egress, 14 templates)
 - [ ] Default-on flags после smoke e2e
 - [ ] Dual-browser Playwright whiteboard
 
 **Exit:** воркшоп 5 человек: стикеры → kanban, таймер, voting, summon.
+
+**Сделано в коде (2026-09-13).** Флаг `enable_whiteboard_facilitation` (default **false**): таймер / pause на awareness `{ endsAt, paused }`, laser TTL 800ms, summon one-shot, private mode (UX-фильтр `meta:createdBy`), facilitator lock (viewport + `canEditBoardWidgets`), presentation prev/next по `affine:frame`, dot voting в Y.Map `wbFacilitation` (переживает reload). Presence bar `data-testid=wb-facilitation`. Kanban Format: `layout`/`viewId`/`syncMode`/`focusMode` на `wb:board`, toolbar (Kanban↔Table, Fields, Hide, Focus, CSV, synced view / duplicate), table view seed вместе с kanban, ingest стикеров в колонку (только drag, не click), egress `wb:record-card` с live title, clone paste копирует rows по имени полей, 14 шаблонов в каталоге + slash + dock «Kanban & flows». Unit-тесты whiteboard. Playwright facilitation/kanban spec написаны, **не гонялись**.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы A+B+C в коде):**
+
+- Default-on `enable_board_widget` / `enable_whiteboard_facilitation` / `enable_workshop_chrome` — после live smoke e2e (пункт ниже).
+- Dual-browser Playwright: spec-заготовка `tests/affine-local/e2e/whiteboard/kanban-format.spec.ts` skipped; два клиента в этой среде не поднимались.
+- Filter/Sort UI — lane filter и hide; полный `FilterGroup` data-view в шапке не включён (`headerWidget` по-прежнему undefined, свой toolbar).
+- Keyboard Enter/Tab parity в focus — опирается на data-view, отдельный hotkey-слой не добавлялся.
+- Timeline layout (фаза D) и AI Sidekick (фаза E) — не E1; `release-train` остаётся kanban Now/Next/Later.
+- Private mode не security: скрытие DOM по автору, не ACL.
+- Paste dialog «Synced view / Duplicate» — действия в toolbar ⋮, не модалка при Ctrl+V; default paste = owned clone с копией rows по имени полей.
+- «Save board as template» (Kanban C4 / Custom Blueprints) — не E1.
+- SVG-превью 14 шаблонов в Affine EdgelessTemplatePanel — не рисовались; каталог живой в slash + dock Templates (`Kanban & flows`) при `enable_workshop_chrome`.
+- Live e2e facilitation/kanban Playwright specs написаны, **не гонялись**.
+- i18n.gen.ts не регенерировался в этой среде (I18n proxy принимает неизвестные ключи; en.json + ru.json заполнены).
+- Laser/summon dual-browser не гонялись.
 
 ### Фаза E2 — AI Gateway, Copilot, MCP, embeddings, Calendar (10–12 недель)
 

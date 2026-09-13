@@ -39,6 +39,7 @@ const optionsSchema = z.object({
   enablePerfHud: z.boolean().optional(),
   enableL0Layer: z.boolean().optional(),
   enableCollab: z.boolean().optional(),
+  enableFacilitation: z.boolean().optional(),
   enableWorkshopChrome: z.boolean().optional(),
   reactToLit: z.custom<WhiteboardReactToLit>().optional(),
 });
@@ -95,7 +96,7 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
       if (options?.enableL0Layer) {
         context.register(WhiteboardL0LayerExtension);
       }
-      if (options?.enableCollab) {
+      if (options?.enableCollab || options?.enableFacilitation) {
         context.register(WhiteboardCollabLayerExtension);
       }
       if (options?.enableWorkshopChrome) {

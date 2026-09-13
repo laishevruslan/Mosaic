@@ -25,6 +25,7 @@ export { BoardEdgelessBlockComponent } from './board-edgeless-block';
 export { BoardPreviewBlockComponent } from './board-preview-block';
 export { readBoardColumns } from './column-snapshot';
 export { readBoardGrid } from './grid';
+export { ingestSourceToRow } from './ingest';
 export { getBoardLodLevel, liveKanbanBudget } from './live-budget';
 export { BoardBlockSchema, BoardBlockSchemaExtension } from './model';
 export {
@@ -33,5 +34,6 @@ export {
   nextChecklistCell,
   readGroupByAxes,
 } from './semantics';
-export { columnsForTemplate } from './types';
+export { boardTemplateDef, columnsForTemplate, isBoardTemplate } from './templates';
+export { hideGroupProperties, recordsToCsv } from './view-meta';
 export { sliceCards, windowCards, windowRange } from './virtualize';

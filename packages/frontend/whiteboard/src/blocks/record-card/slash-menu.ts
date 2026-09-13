@@ -23,7 +23,8 @@ const recordCardSlashMenuConfig: SlashMenuConfig = {
       group: '4_Content & Media@13',
       when: ({ std }) =>
         std.store.schema.flavourSchemaMap.has(flavour) &&
-        std.get(FeatureFlagService).getFlag('enable_workshop_chrome') &&
+        (std.get(FeatureFlagService).getFlag('enable_workshop_chrome') ||
+          std.get(FeatureFlagService).getFlag('enable_board_widget')) &&
         !std.store.readonly,
       action: ({ std }) => {
         insertGfxWidget(std, flavour, {}, RECORD_CARD_WIDGET_SIZE);

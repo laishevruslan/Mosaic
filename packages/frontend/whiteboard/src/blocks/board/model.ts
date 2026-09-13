@@ -17,6 +17,10 @@ export type BoardBlockProps = {
   linkedDocId?: string;
   blockId?: string;
   template?: BoardTemplate;
+  layout?: 'kanban' | 'table' | 'timeline' | 'calendar';
+  viewId?: string;
+  syncMode?: 'owned' | 'projection';
+  focusMode?: boolean;
   snapshotBlobId?: string;
   liveBudgetExempt?: boolean;
 } & GfxCommonBlockProps;
@@ -33,6 +37,10 @@ export const BoardBlockSchema = defineBlockSchema({
     linkedDocId: undefined,
     blockId: undefined,
     template: 'todo',
+    layout: 'kanban',
+    viewId: undefined,
+    syncMode: 'owned',
+    focusMode: false,
     snapshotBlobId: undefined,
     liveBudgetExempt: false,
   }),

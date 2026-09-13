@@ -34,6 +34,11 @@ export const recordCardStyles = css`
     font-size: 16px;
     line-height: 22px;
     font-weight: 600;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    width: 100%;
   }
 
   .wb-record-card__meta {
