@@ -4,6 +4,7 @@ import {
 } from '@blocksuite/affine/ext-loader';
 import { z } from 'zod';
 
+import { WhiteboardExploreLayerExtension } from './a11y/explore-layer';
 import { boardWidget } from './blocks/board';
 import { chartWidget } from './blocks/chart';
 import { helloWidget } from './blocks/hello';
@@ -93,6 +94,7 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
     if (this.isEdgeless(context.scope) && !this.isPreview(context.scope)) {
       context.register(WhiteboardLayoutHandlerExtensions);
       context.register(WhiteboardPerfPolicyExtension);
+      context.register(WhiteboardExploreLayerExtension);
       if (options?.enableL0Layer) {
         context.register(WhiteboardL0LayerExtension);
       }

@@ -7,6 +7,8 @@ import { html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { Root } from 'react-dom/client';
 
+import { prefersReducedMotion } from '../../a11y/reduced-motion';
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import { workshopRailFromElement } from '../../chrome/layout';
 import {
   publishWidgetEditing,
@@ -218,7 +220,8 @@ export class ChartBlockComponent extends BlockComponent<ChartBlockModel> {
       spec: readSpec(this.model.props.spec),
       dataset: this._dataset,
       theme,
-      animation: this.selected && pointCount < 2000,
+      animation:
+        this.selected && pointCount < 2000 && !prefersReducedMotion(),
     });
 
     try {
@@ -324,10 +327,13 @@ export class ChartBlockComponent extends BlockComponent<ChartBlockModel> {
       I18n['com.affine.whiteboard.chart.title']();
     const empty = !this._dataset.source.length;
     const live = !!this._live || this.canUseLive();
+    const level = getChartLodLevel(this.zoom, this.selected, this.hovered);
 
     return html`
       <div
         class="wb-chart"
+        role="group"
+        aria-label=${widgetAriaLabel('chart', level, title)}
         @pointerenter=${() => {
           this.hovered = true;
           detach(this.syncLive());
@@ -348,7 +354,7 @@ export class ChartBlockComponent extends BlockComponent<ChartBlockModel> {
                 ? html`<img
                     class="wb-chart__snapshot"
                     src=${this.snapshotUrl}
-                    alt=${title}
+                    alt=${snapshotAlt('chart', title)}
                   />`
                 : html`<div class="wb-chart__placeholder">
                     ${

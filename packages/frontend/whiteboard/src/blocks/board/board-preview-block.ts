@@ -2,6 +2,7 @@ import { I18n } from '@affine/i18n';
 import { BlockComponent } from '@blocksuite/affine/std';
 import { html } from 'lit';
 
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import type { BoardBlockModel } from './model';
 import { boardBlockStyles } from './styles';
 
@@ -15,7 +16,11 @@ export class BoardPreviewBlockComponent extends BlockComponent<BoardBlockModel> 
     const snapshot = this.model.props.snapshotBlobId$.value;
 
     return html`
-      <div class="wb-board">
+      <div
+        class="wb-board"
+        role="img"
+        aria-label=${widgetAriaLabel('board', 'l0', title)}
+      >
         <div class="wb-board__header">
           <div class="wb-board__title">${title}</div>
           <div class="wb-board__kicker">
@@ -28,7 +33,7 @@ export class BoardPreviewBlockComponent extends BlockComponent<BoardBlockModel> 
               ? html`<img
                   class="wb-board__snapshot"
                   src=${snapshot}
-                  alt=${title}
+                  alt=${snapshotAlt('board', title)}
                 />`
               : html`<div class="wb-board__placeholder">
                   ${I18n['com.affine.whiteboard.board.preview-label']()}

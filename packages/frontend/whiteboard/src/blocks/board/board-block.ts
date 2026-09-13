@@ -9,6 +9,7 @@ import { html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import type { Root } from 'react-dom/client';
 
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import { workshopRailFromElement } from '../../chrome/layout';
 import {
   getDocAwareness,
@@ -626,6 +627,8 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
     return html`
       <div
         class="wb-board wb-board--${level}${this.model.props.focusMode ? ' wb-board--focus' : ''}"
+        role="group"
+        aria-label=${widgetAriaLabel('board', level, this.titleText)}
         data-layout=${this.layout}
         @pointerenter=${() => {
           this.hovered = true;
@@ -690,7 +693,7 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
                         ? html`<img
                             class="wb-board__snapshot"
                             src=${snapshot}
-                            alt=${this.titleText}
+                            alt=${snapshotAlt('board', this.titleText)}
                           />`
                         : html`<div class="wb-board__placeholder">
                             ${I18n['com.affine.whiteboard.board.empty']()}

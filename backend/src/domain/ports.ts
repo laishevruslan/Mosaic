@@ -70,6 +70,7 @@ import type {
 import type { OauthAccount } from './sso.js';
 import type { SecurityPolicy } from './security.js';
 import type { PublicDoc } from './share.js';
+import type { DocSensitivity, RetentionPolicy } from './guard.js';
 import type { JobRecord } from './jobs.js';
 import type {
   MailMessage,
@@ -699,6 +700,17 @@ export interface RedisPort {
   raw(): unknown;
 }
 
+export interface GuardStore {
+  getDocSensitivity(
+    workspaceId: string,
+    docId: string
+  ): Promise<DocSensitivity | null>;
+  setDocSensitivity(record: DocSensitivity): Promise<DocSensitivity>;
+  listDocSensitivities(workspaceId: string): Promise<DocSensitivity[]>;
+  getRetentionPolicy(workspaceId: string): Promise<RetentionPolicy | null>;
+  setRetentionPolicy(policy: RetentionPolicy): Promise<RetentionPolicy>;
+}
+
 export interface HealthProbe {
   kind: 'memory' | 'postgres';
   ping(): Promise<boolean>;
@@ -735,4 +747,5 @@ export interface MosaicStore
     OrgStore,
     ScimStore,
     MfaStore,
+    GuardStore,
     HealthProbe {}

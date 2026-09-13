@@ -317,11 +317,13 @@ Domain control + verification, SAML, MFA через IdP, sharing restrictions, K
 
 ### Трек Enterprise-3 — Governance add-on + accessibility (10–12 недель, может идти как отдельный "Enterprise Guard"-пакет)
 
-- [ ] Sensitivity label + org-wide sharing guardrail — §5.9
-- [ ] Retention/legal hold hook в blob GC — §5.7
-- [ ] BYOK KMS для blob storage — §5.7
-- [ ] DLP hook-интерфейс (без встроенного классификатора) — §5.7
-- [ ] Accessibility: аудит + keyboard nav + ARIA на виджетах — §5.8
+- [x] Sensitivity label + org-wide sharing guardrail — §5.9
+- [x] Retention/legal hold hook в blob GC — §5.7
+- [x] BYOK KMS для blob storage — §5.7
+- [x] DLP hook-интерфейс (без встроенного классификатора) — §5.7
+- [x] Accessibility: аудит + keyboard nav + ARIA на виджетах — §5.8
+
+Не полностью: см. `plans/mosaic_enterprise_plan.md` фаза E3 (native GCS stub, regex DLP, GDPR slice, axe skip unless `A11Y=1`, VPAT процесс).
 
 ### Трек Enterprise-4 — Поиск по канвасу + mobile паритет (6–8 недель, низкий приоритет)
 

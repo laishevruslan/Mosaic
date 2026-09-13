@@ -2,6 +2,7 @@ import { I18n } from '@affine/i18n';
 import { BlockComponent } from '@blocksuite/affine/std';
 import { html } from 'lit';
 
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import { detach } from '../../detach';
 import { resolveBlobSrc, revokeObjectUrl } from './blob';
 import type { SketchBlockModel } from './model';
@@ -44,7 +45,11 @@ export class SketchPreviewBlockComponent extends BlockComponent<SketchBlockModel
       this.model.props.title?.toString() ||
       I18n['com.affine.whiteboard.sketch.title']();
     return html`
-      <div class="wb-sketch">
+      <div
+        class="wb-sketch"
+        role="img"
+        aria-label=${widgetAriaLabel('sketch', 'l0', title)}
+      >
         <div class="wb-sketch__header">
           <div class="wb-sketch__title">${title}</div>
           <div class="wb-sketch__kicker">
@@ -57,7 +62,7 @@ export class SketchPreviewBlockComponent extends BlockComponent<SketchBlockModel
               ? html`<img
                   class="wb-sketch__snapshot"
                   src=${this._previewSrc}
-                  alt=${title}
+                  alt=${snapshotAlt('sketch', title)}
                 />`
               : html`<div class="wb-sketch__placeholder">
                   ${I18n['com.affine.whiteboard.sketch.preview-label']()}

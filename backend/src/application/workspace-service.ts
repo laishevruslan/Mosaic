@@ -4,6 +4,7 @@ import type { WorkspacePatch } from '../domain/membership.js';
 import type { Clock, WorkspaceStore } from '../domain/ports.js';
 import type { AuditService } from './audit-service.js';
 import type { OrgService } from './org-service.js';
+import type { GuardService } from './guard-service.js';
 
 export interface WorkspaceJanitor {
   purgeWorkspace(workspaceId: string): Promise<void>;
@@ -17,6 +18,12 @@ export class WorkspaceService {
     private readonly audit?: AuditService,
     private readonly orgs?: OrgService
   ) {}
+
+  private guard?: GuardService;
+
+  bindGuard(guard: GuardService): void {
+    this.guard = guard;
+  }
 
   async list(user: User | null): Promise<Workspace[]> {
     if (!user) {
@@ -100,6 +107,7 @@ export class WorkspaceService {
     if (!member || member.role !== 'owner') {
       throw errors.spaceAccessDenied(workspaceId);
     }
+    await this.guard?.assertNotHeld(workspaceId);
     await this.janitor?.purgeWorkspace(workspaceId);
     const deleted = await this.store.deleteWorkspace(workspaceId);
     if (deleted) {

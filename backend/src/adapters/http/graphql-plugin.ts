@@ -15,6 +15,8 @@ import type { AiGatewayService } from '../../application/ai-gateway.js';
 import type { ByokService } from '../../application/byok-service.js';
 import type { CalendarService } from '../../application/calendar-service.js';
 import type { EmbeddingService } from '../../application/embedding-service.js';
+import type { GdprService } from '../../application/gdpr-service.js';
+import type { GuardService } from '../../application/guard-service.js';
 import type { McpService } from '../../application/mcp-service.js';
 import type { AuditService } from '../../application/audit-service.js';
 import type { BlobService } from '../../application/blob-service.js';
@@ -63,6 +65,7 @@ import { copilotResolvers, copilotTypeDefs } from './graphql-copilot.js';
 import { calendarResolvers, calendarTypeDefs } from './graphql-calendar.js';
 import { mcpResolvers, mcpTypeDefs } from './graphql-mcp.js';
 import { shareResolvers, shareTypeDefs } from './graphql-share.js';
+import { guardResolvers, guardTypeDefs } from './graphql-guard.js';
 
 const graphqlRequest = new AsyncLocalStorage<FastifyRequest>();
 
@@ -351,6 +354,8 @@ export const graphqlPlugin = fp<{
   byok: ByokService;
   mcp: McpService;
   calendar: CalendarService;
+  guard: GuardService;
+  gdpr: GdprService;
 }>(
   async (app, opts) => {
     const blob = blobResolvers({
@@ -433,6 +438,16 @@ export const graphqlPlugin = fp<{
       calendar: opts.calendar,
       requestOf: httpRequest,
     });
+    const guard = guardResolvers({
+      auth: opts.auth,
+      guard: opts.guard,
+      gdpr: opts.gdpr,
+      kmsConfigured: Boolean(
+        (opts.config.S3_SSE === 'aws:kms' && opts.config.S3_KMS_KEY_ID) ||
+          opts.config.GCS_KMS_KEY_NAME
+      ),
+      requestOf: httpRequest,
+    });
     const schema = createSchema({
       typeDefs: [
         coreTypeDefs,
@@ -447,6 +462,7 @@ export const graphqlPlugin = fp<{
         notifyTypeDefs,
         adminConfigTypeDefs,
         adminTypeDefs,
+        guardTypeDefs,
       ],
       resolvers: {
         DateTime,
@@ -612,6 +628,7 @@ export const graphqlPlugin = fp<{
           ...notify.Mutation,
           ...adminConfig.Mutation,
           ...admin.Mutation,
+          ...guard.Mutation,
         },
         UserType: {
           quota: (parent: { quota?: ReturnType<typeof mosaicQuota> }) =>
@@ -630,6 +647,7 @@ export const graphqlPlugin = fp<{
         ServerConfigType: {
           ...admin.ServerConfigType,
           ...calendar.ServerConfigType,
+          ...guard.ServerConfigType,
         },
         WorkspaceCalendarObjectType: calendar.WorkspaceCalendarObjectType,
         WorkspaceType: {
@@ -640,6 +658,7 @@ export const graphqlPlugin = fp<{
           ...platform.WorkspaceType,
           ...copilot.WorkspaceType,
           ...calendar.WorkspaceType,
+          ...guard.WorkspaceType,
         },
       },
     });

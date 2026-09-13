@@ -3,6 +3,7 @@ import { BlockComponent } from '@blocksuite/affine/std';
 import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import { detach } from '../../detach';
 import type { ChartBlockModel } from './model';
 import { readTitle } from './props';
@@ -54,7 +55,11 @@ export class ChartPreviewBlockComponent extends BlockComponent<ChartBlockModel> 
       I18n['com.affine.whiteboard.chart.title']();
 
     return html`
-      <div class="wb-chart">
+      <div
+        class="wb-chart"
+        role="img"
+        aria-label=${widgetAriaLabel('chart', 'l0', title)}
+      >
         <div class="wb-chart__header">
           <div class="wb-chart__title">${title}</div>
         </div>
@@ -64,7 +69,7 @@ export class ChartPreviewBlockComponent extends BlockComponent<ChartBlockModel> 
               ? html`<img
                   class="wb-chart__snapshot"
                   src=${this.snapshotUrl}
-                  alt=${title}
+                  alt=${snapshotAlt('chart', title)}
                 />`
               : html`<div class="wb-chart__placeholder">
                   ${I18n['com.affine.whiteboard.chart.preview-label']()}

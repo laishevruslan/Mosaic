@@ -57,8 +57,11 @@ export interface BlobObjectsInput {
     secretAccessKey?: string;
     endpoint?: string;
     forcePathStyle: boolean;
+    sse?: 'AES256' | 'aws:kms';
+    kmsKeyId?: string;
   };
   gcsBucket?: string;
+  gcsKmsKeyName?: string;
 }
 
 export function createBlobObjects(input: BlobObjectsInput): BlobObjectStore {
@@ -87,10 +90,16 @@ export function createBlobObjects(input: BlobObjectsInput): BlobObjectStore {
     if (input.s3?.endpoint) {
       options.endpoint = input.s3.endpoint;
     }
+    if (input.s3?.sse) {
+      options.sse = input.s3.sse;
+    }
+    if (input.s3?.kmsKeyId) {
+      options.kmsKeyId = input.s3.kmsKeyId;
+    }
     return new S3BlobObjects(options);
   }
   if (input.driver === 'gcs') {
-    return new GcsBlobObjects(input.gcsBucket);
+    return new GcsBlobObjects(input.gcsBucket, input.gcsKmsKeyName);
   }
   return new FileSystemBlobObjects(resolve(input.dir));
 }

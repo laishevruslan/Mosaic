@@ -6,7 +6,6 @@
   "create-checkout-link.gql",
   "create-customer-portal.gql",
   "create-self-host-customer-portal.gql",
-  "delete-account.gql",
   "doc-role-permissions.gql",
   "generate-license-key.gql",
   "get-doc-created-by-updated-by-list.gql",

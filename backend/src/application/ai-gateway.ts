@@ -14,6 +14,7 @@ import type { AuditService } from './audit-service.js';
 import type { ByokService } from './byok-service.js';
 import type { EmbeddingService } from './embedding-service.js';
 import type { WorkspaceService } from './workspace-service.js';
+import type { DlpService } from './dlp-service.js';
 
 export interface AiSettings {
   baseUrl: string;
@@ -34,7 +35,8 @@ export class AiGatewayService {
     private readonly workspaces?: WorkspaceService,
     private readonly embeddings?: EmbeddingService,
     private readonly byok?: ByokService,
-    private readonly jobs?: JobWorker
+    private readonly jobs?: JobWorker,
+    private readonly dlp?: DlpService
   ) {}
 
   get enabled(): boolean {
@@ -690,6 +692,7 @@ export class AiGatewayService {
     if (!apiKey) {
       throw errors.copilotDisabled();
     }
+    const payload = this.dlp?.applyMessages(messages, { workspaceId }) ?? messages;
     const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
     const res = await this.fetch(url, {
       method: 'POST',
@@ -699,7 +702,7 @@ export class AiGatewayService {
       },
       body: JSON.stringify({
         model: this.settings.model,
-        messages,
+        messages: payload,
         temperature: 0.2,
       }),
     });

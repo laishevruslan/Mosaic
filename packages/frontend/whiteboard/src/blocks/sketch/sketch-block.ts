@@ -5,6 +5,7 @@ import { html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import type { Root } from 'react-dom/client';
 
+import { snapshotAlt, widgetAriaLabel } from '../../a11y/widget-aria';
 import {
   publishWidgetEditing,
   remoteOwnsLiveEditor,
@@ -481,6 +482,8 @@ export class SketchBlockComponent extends BlockComponent<SketchBlockModel> {
     return html`
       <div
         class="wb-sketch ${this.editing ? 'wb-sketch--editing' : ''}"
+        role="group"
+        aria-label=${widgetAriaLabel('sketch', this.lod, this.titleText)}
         @pointerenter=${() => {
           this.hovered = true;
           this.syncLive();
@@ -515,7 +518,7 @@ export class SketchBlockComponent extends BlockComponent<SketchBlockModel> {
                 ? html`<img
                     class="wb-sketch__snapshot"
                     src=${this.snapshotUrl}
-                    alt=${this.titleText}
+                    alt=${snapshotAlt('sketch', this.titleText)}
                   />`
                 : html`<div class="wb-sketch__placeholder">
                     ${I18n['com.affine.whiteboard.sketch.empty']()}

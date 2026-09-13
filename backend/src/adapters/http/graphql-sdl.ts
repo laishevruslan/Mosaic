@@ -10,6 +10,7 @@ import { notifyTypeDefs } from './graphql-notify.js';
 import { coreTypeDefs } from './graphql-plugin.js';
 import { platformTypeDefs } from './graphql-platform.js';
 import { shareTypeDefs } from './graphql-share.js';
+import { guardTypeDefs } from './graphql-guard.js';
 
 export const mosaicGraphqlSdl = [
   coreTypeDefs,
@@ -24,4 +25,5 @@ export const mosaicGraphqlSdl = [
   notifyTypeDefs,
   adminConfigTypeDefs,
   adminTypeDefs,
+  guardTypeDefs,
 ].join('\n');

@@ -227,6 +227,24 @@ export const errors = {
       'ACTION_FORBIDDEN',
       'Public edit links are disabled for this workspace.'
     ),
+  sensitivityBlocksShare: () =>
+    err(
+      403,
+      'ACTION_FORBIDDEN',
+      'Confidential documents cannot be shared with a public link.'
+    ),
+  legalHoldActive: () =>
+    err(
+      403,
+      'ACTION_FORBIDDEN',
+      'Legal hold is active; delete and garbage collection are blocked.'
+    ),
+  dlpBlocked: () =>
+    err(
+      403,
+      'ACTION_FORBIDDEN',
+      'This content was blocked by the data-loss-prevention policy.'
+    ),
   orgNotFound: () => err(404, 'NOT_FOUND', 'Organization not found.'),
   jiraNotConfigured: () =>
     err(

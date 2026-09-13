@@ -13,6 +13,9 @@ import { ApiTokenService } from './application/api-token-service.js';
 import { ByokService } from './application/byok-service.js';
 import { CalendarService } from './application/calendar-service.js';
 import { EmbeddingService } from './application/embedding-service.js';
+import { GdprService } from './application/gdpr-service.js';
+import { GuardService } from './application/guard-service.js';
+import { DlpService } from './application/dlp-service.js';
 import { McpService } from './application/mcp-service.js';
 import { AppConfigService } from './application/app-config-service.js';
 import { AuditService } from './application/audit-service.js';
@@ -239,8 +242,13 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
         : {}),
       ...(config.S3_ENDPOINT ? { endpoint: config.S3_ENDPOINT } : {}),
       forcePathStyle: config.s3ForcePathStyle,
+      ...(config.S3_SSE ? { sse: config.S3_SSE } : {}),
+      ...(config.S3_KMS_KEY_ID ? { kmsKeyId: config.S3_KMS_KEY_ID } : {}),
     },
     ...(config.GCS_BUCKET ? { gcsBucket: config.GCS_BUCKET } : {}),
+    ...(config.GCS_KMS_KEY_NAME
+      ? { gcsKmsKeyName: config.GCS_KMS_KEY_NAME }
+      : {}),
   });
   const blobs = new BlobService(store, store, objects, clock, {
     maxBytes: config.BLOB_MAX_BYTES,
@@ -299,6 +307,19 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     maxUpdateBytes: config.SYNC_MAX_UPDATE_BYTES,
     historyLimit: config.DOC_HISTORY_LIMIT,
   });
+  const dlp = new DlpService(config.MOSAIC_DLP_MODE ?? 'off', { audit });
+  blobs.bindDlp(dlp);
+  const guard = new GuardService(store, workspaces, clock, {
+    audit,
+    shares: store,
+    ...(config.MOSAIC_CONFIDENTIAL_BLOCKS_PUBLIC === false
+      ? { confidentialBlocksPublic: false }
+      : {}),
+  });
+  shares.bindGuard(guard);
+  blobs.bindGuard(guard);
+  docs.bindGuard(guard);
+  workspaces.bindGuard(guard);
   const search = new SearchService(store, store);
   const embeddings = new EmbeddingService(
     store,
@@ -328,6 +349,19 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     audit
   );
   const tokens = new ApiTokenService(store, clock, audit);
+  const gdpr = new GdprService(
+    store,
+    workspaces,
+    store,
+    store,
+    store,
+    store,
+    store,
+    auth,
+    guard,
+    clock,
+    { audit }
+  );
   const aiSettings: AiSettings = {
     baseUrl: config.MOSAIC_AI_BASE_URL,
     model: config.MOSAIC_AI_MODEL,
@@ -345,7 +379,8 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     workspaces,
     embeddings,
     byok,
-    jobs
+    jobs,
+    dlp
   );
   const jiraSettings: JiraSettings = {};
   if (config.MOSAIC_JIRA_BASE_URL)
@@ -493,6 +528,8 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     byok,
     mcp,
     calendar,
+    guard,
+    gdpr,
   });
   await app.register(mcpRoutes, { auth, workspaces, mcp });
   await app.register(apiV2Routes, {
@@ -580,6 +617,8 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     scim,
     mfa,
     adminUsers,
+    guard,
+    gdpr,
   };
 }
 

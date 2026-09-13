@@ -9,7 +9,14 @@ import type { BlobObjectStore } from '../../domain/ports.js';
 export class GcsBlobObjects implements BlobObjectStore {
   readonly driver = 'gcs' as const;
 
-  constructor(_bucket?: string) {}
+  constructor(
+    _bucket?: string,
+    private readonly kmsKeyName?: string
+  ) {}
+
+  kmsConfigured(): boolean {
+    return Boolean(this.kmsKeyName);
+  }
 
   async put(): Promise<void> {
     throw errors.blobDriverUnimplemented('gcs');

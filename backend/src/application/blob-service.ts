@@ -19,6 +19,8 @@ import type {
   Clock,
   WorkspaceStore,
 } from '../domain/ports.js';
+import type { DlpService } from './dlp-service.js';
+import type { GuardService } from './guard-service.js';
 
 export interface BlobServiceConfig {
   maxBytes: number;
@@ -87,6 +89,17 @@ export class BlobService {
     private readonly clock: Clock,
     private readonly config: BlobServiceConfig
   ) {}
+
+  private guard?: GuardService;
+  private dlp?: DlpService;
+
+  bindGuard(guard: GuardService): void {
+    this.guard = guard;
+  }
+
+  bindDlp(dlp: DlpService): void {
+    this.dlp = dlp;
+  }
 
   async authorize(user: User, workspaceId: string): Promise<void> {
     const workspace = await this.workspaces.getWorkspace(workspaceId);
@@ -374,6 +387,7 @@ export class BlobService {
   ): Promise<boolean> {
     await this.authorize(user, workspaceId);
     if (permanently) {
+      await this.guard?.assertNotHeld(workspaceId);
       await this.objects.delete(objectKey(workspaceId, key));
       return this.blobs.deleteBlob(workspaceId, key);
     }
@@ -404,6 +418,12 @@ export class BlobService {
       if (!blob.deletedAt) {
         continue;
       }
+      if (
+        this.guard &&
+        !(await this.guard.canPhysicallyDelete(workspaceId, blob.deletedAt))
+      ) {
+        continue;
+      }
       await this.objects.delete(objectKey(workspaceId, blob.key));
       await this.blobs.deleteBlob(workspaceId, blob.key);
       count += 1;
@@ -412,6 +432,7 @@ export class BlobService {
   }
 
   async purgeWorkspace(workspaceId: string): Promise<void> {
+    await this.guard?.assertNotHeld(workspaceId);
     const keys = await this.blobs.deleteWorkspaceBlobs(workspaceId);
     for (const key of keys) {
       await this.objects.delete(objectKey(workspaceId, key));
@@ -532,6 +553,7 @@ export class BlobService {
       throw errors.storageQuotaExceeded();
     }
     const mime = sniffMime(payload, declaredMime);
+    this.dlp?.inspectBytes(payload, mime);
     await this.objects.put(objectKey(workspaceId, key), payload);
     await this.blobs.upsertBlob({
       workspaceId,

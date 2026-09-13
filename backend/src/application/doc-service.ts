@@ -16,6 +16,7 @@ import type { DocHistoryRecord } from '../domain/blob.js';
 import { AppError, errors } from '../domain/errors.js';
 import type { User, WorkspaceRole } from '../domain/identity.js';
 import type { Clock, DocStore, WorkspaceStore } from '../domain/ports.js';
+import type { GuardService } from './guard-service.js';
 import { sha256Bytes } from './crypto.js';
 import { KeyedMutex } from './mutex.js';
 
@@ -48,6 +49,12 @@ export class DocService {
     private readonly clock: Clock,
     private readonly config: DocServiceConfig
   ) {}
+
+  private guard?: GuardService;
+
+  bindGuard(guard: GuardService): void {
+    this.guard = guard;
+  }
 
   async authorize(
     user: User,
@@ -234,6 +241,9 @@ export class DocService {
     docId: string
   ): Promise<boolean> {
     await this.requireWrite(user, spaceType, spaceId);
+    if (spaceType === 'workspace') {
+      await this.guard?.assertNotHeld(spaceId);
+    }
     return this.locks.run(docKey(spaceType, spaceId, docId), async () =>
       this.docs.deleteDocument(spaceType as SpaceType, spaceId, docId)
     );
@@ -261,6 +271,9 @@ export class DocService {
       async () => {
         const now = this.clock.now().getTime();
         if (next === 'deleted') {
+          if (spaceType === 'workspace') {
+            await this.guard?.assertNotHeld(input.spaceId);
+          }
           await this.docs.deleteDocument(spaceType, input.spaceId, input.docId);
         } else {
           const existing = await this.docs.getDocument(
@@ -441,6 +454,11 @@ export class DocService {
       snapshot,
       timestamp: record.timestamp,
     });
+    if (spaceType === 'workspace' && this.guard) {
+      if (await this.guard.isHeld(spaceId)) {
+        return;
+      }
+    }
     await this.docs.trimHistories(
       spaceType,
       spaceId,

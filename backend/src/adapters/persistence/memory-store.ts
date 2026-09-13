@@ -51,7 +51,7 @@ import type {
 } from '../../domain/notify.js';
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc } from '../../domain/share.js';
-import { MemoryE2Store } from './e2-memory.js';
+import { MemoryE3Store } from './e3-memory.js';
 
 function cloneUser(user: User): User {
   return {
@@ -90,7 +90,7 @@ function cloneSession(session: Session): Session {
   };
 }
 
-export class MemoryStore extends MemoryE2Store implements MosaicStore {
+export class MemoryStore extends MemoryE3Store implements MosaicStore {
   readonly kind = 'memory' as const;
 
   private readonly users = new Map<string, User>();

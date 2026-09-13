@@ -110,11 +110,11 @@ Clean-room policy остаётся: писать по контрактам кл�
 | ER-12 | Slack / Teams | ❌ | §5.6 |
 | ER-13 | Jira card linking UI | 🟡 server REST | Привязка к `wb:board` |
 | ER-14 | Data residency | 🟡 self-host = регион | Managed topology + docs |
-| ER-15 | Retention / legal hold | ❌ | Хук в blob/doc GC |
-| ER-16 | BYOK/KMS blobs | ❌ | S3 SSE-KMS, не свой crypto |
-| ER-17 | DLP hook | ❌ | Интерфейс, не ML |
-| ER-18 | Sensitivity labels | ❌ | §5.9 |
-| ER-19 | WCAG 2.2 AA | ❌ | §5.8 |
+| ER-15 | Retention / legal hold | 🟡 хук blob/doc GC + GraphQL | UI настроек / eDiscovery zip — не E3 |
+| ER-16 | BYOK/KMS blobs | 🟡 S3 SSE-KMS headers | Native GCS KMS driver — stub |
+| ER-17 | DLP hook | 🟡 `ContentClassifier` regex | Не ML-классификатор |
+| ER-18 | Sensitivity labels | 🟡 Public/Internal/Confidential | Org-wide policy UI — позже |
+| ER-19 | WCAG 2.2 AA | 🟡 keyboard explore + ARIA | axe Playwright skipped unless `A11Y=1`; VPAT процесс |
 | ER-20 | Поиск по объектам канваса | ❌ | §5.10 |
 | ER-21 | Mobile edgeless parity | 🟡 флаг | §5.11 |
 | ER-22 | Marketplace | ❌ | После SDK, P3 |
@@ -180,7 +180,7 @@ Clean-room policy остаётся: писать по контрактам кл�
 | N-6 | Backup / PITR / documented RPO-RTO | Self-host RFP | P0 |
 | N-7 | Helm chart + HPA + anti-affinity (stateless app) | Managed/K8s customers | P1 |
 | N-8 | Blob malware/content sniff + CSP/security headers | Upload = атака | P1 |
-| N-9 | GDPR: export user, delete user (DSAR), cookie/consent для cloud | Юр. блокер EU | P1 |
+| N-9 | GDPR: export user, delete user (DSAR), cookie/consent для cloud | 🟡 `exportMyData` / `deleteAccount` в E3; cookie/consent cloud нет | P1 |
 | N-10 | Secrets via env/file, не в GraphQL `appConfig` plaintext | Admin EE-паттерн опасен | P0 |
 | N-11 | Feature-flag remote config с admin | Раскатка enterprise-фич | P1 |
 | N-12 | Org usage meter (storage, seats, AI tokens) + Stripe/license | Своя коммерция, wire `quota`/`prices` | P0 |
@@ -767,7 +767,7 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 - Transcript — queued placeholder, без реального STT.
 - Embeddings — локальные hash-векторы (dim 32), не pgvector/OpenAI embeddings; widget extractors канбана — E4 indexer.
 - Stream — REST SSE (`/ai/chat/stream`), не Yoga multipart GraphQL subscription.
-- Redaction/PII hook перед провайдером — E3 DLP.
+- Redaction/PII hook перед провайдером — **сделано в E3** (`DlpService`, default off).
 - Slack: только формат Incoming Webhook по URL; нет OAuth, unfurl, mention fan-out.
 - Jira UI: флаг `configured` + существующий REST; нет OAuth, status mapping UI, two-way на `wb:board`.
 - API v2 — срез (tokens + workspaces + OpenAPI); нет `/api/v2/orgs`, `/docs/:id/export`, per-token rate limit.
@@ -780,12 +780,28 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 ### Фаза E3 — Guard + a11y (10–12 недель)
 
-- [ ] Sensitivity + sharing guardrail
-- [ ] Retention / legal hold
-- [ ] KMS на S3/GCS
-- [ ] DLP hook
-- [ ] GDPR export/delete
-- [ ] axe + keyboard nav + ARIA
+- [x] Sensitivity + sharing guardrail
+- [x] Retention / legal hold
+- [x] KMS на S3/GCS
+- [x] DLP hook
+- [x] GDPR export/delete
+- [x] axe + keyboard nav + ARIA
+
+**Сделано в коде (2026-09-13).** Clean-room `@mosaic/server` (`backend/`): Guard labels `Public | Internal | Confidential` на документе; `assertCanPublish` блокирует public link для Confidential (выкл. `MOSAIC_CONFIDENTIAL_BLOCKS_PUBLIC=false`); установка Confidential отзывает уже опубликованный doc. Retention + legal hold: GraphQL `setWorkspaceRetention` / `WorkspaceType.retentionPolicy`; hold блокирует `deleteWorkspace`, hard-delete blob/doc, `purgeWorkspace`; `gcWorkspace` / trim history пропускают объекты, пока hold или `retentionDays` не истекли. DLP: порт `ContentClassifier` + `RegexContentClassifier` (email / PAN / `sk|mosaic_pat|mosaic_mcp`); режимы `off|redact|block` (`MOSAIC_DLP_MODE`, default off); хук перед AI provider и на text blob commit. GDPR: `exportMyData` JSON (user, memberships, public docs, blob meta, copilot session ids, audit) + `deleteAccount` (hold-check owned workspaces, revoke sessions, `deleteUser`). KMS: S3 PutObject `x-amz-server-side-encryption` AES256/`aws:kms` + optional key id; GCS хранит `kmsKeyName` (`kmsConfigured()`), native put/get/delete по-прежнему stub. `ServerConfigType.kmsConfigured`. Persistence: memory + Postgres `009_e3`. Тесты: `backend/test/e3/guard.test.ts`. GraphQL surface: **130** implemented / **47** wontfix (`deleteAccount` сняли с wontfix). Whiteboard: `WhiteboardExploreLayerExtension` (Tab/Shift-Tab + arrows, `aria-live`), ARIA/snapshot-alt на chart/board/sketch, `prefers-reduced-motion` на ECharts animation. Playwright `tests/affine-local/e2e/whiteboard/a11y.spec.ts` (skip unless `A11Y=1`). i18n en+ru: `com.affine.settings.workspace.guard.*`, `com.affine.whiteboard.{chart|board|sketch}.a11y.*`, `snapshot-alt`, `a11y.explore.announce`.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы в коде):**
+
+- Native GCS adapter всё ещё stub (`blobDriverUnimplemented('gcs')`); production GCS = S3-compat + HMAC. SSE-KMS — заголовки PutObject, не app-side crypto и не live round-trip Google KMS.
+- DLP — regex hook, не ML / не встроенный enterprise classifier; default `off`, чтобы не ломать E2 Copilot.
+- GDPR erase — срез DSAR: нет анонимизации comments, нет eDiscovery zip (N-22), нет cookie/consent UI для cloud (хвост N-9).
+- axe-core spec пропускается без `A11Y=1`; `@axe-core/playwright` в affine-local не добавлен (optional dynamic import). Keyboard explore не прогонялся dual-browser. VPAT — процесс, не код.
+- Postgres RLS spike (`workspace_id = current_setting`) не делался.
+- Guard settings UI не подключён к GraphQL (только i18n-ключи).
+- `i18n.gen.ts` не регенерировался (I18n.t / proxy принимают неизвестные ключи; en.json + ru.json заполнены).
+- Playwright / live axe / login flow не гонялись в этой среде.
+- Default-on флаги facilitation/kanban/chrome остаются **false** (E1).
+
+**Exit:** 0 critical axe findings на login + edgeless create chart/board — **не закрыт** (spec есть, прогон и axe-зависимость не в CI).
 
 ### Фаза E4 — Full-text indexer + analytics + mobile (8–10 недель)
 

@@ -15,6 +15,7 @@ import { WorkspaceService } from './workspace-service.js';
 import type { AuditService } from './audit-service.js';
 import type { SecurityPolicyService } from './security-policy-service.js';
 import type { WebhookService } from './webhook-service.js';
+import type { GuardService } from './guard-service.js';
 
 export class ShareService {
   constructor(
@@ -29,6 +30,12 @@ export class ShareService {
       webhooks?: WebhookService;
     } = {}
   ) {}
+
+  private guard?: GuardService;
+
+  bindGuard(guard: GuardService): void {
+    this.guard = guard;
+  }
 
   async publish(
     user: User,
@@ -45,6 +52,19 @@ export class ShareService {
     const resolved: PublicDocMode = isPublicDocMode(mode) ? mode : 'Page';
     if (resolved === 'Edgeless') {
       await this.extras.policy?.assertPublicEditLinksAllowed(workspaceId);
+    }
+    try {
+      await this.guard?.assertCanPublish(workspaceId, docId);
+    } catch (error) {
+      await this.extras.audit?.record({
+        workspaceId,
+        actorId: user.id,
+        action: 'share.blocked',
+        targetType: 'doc',
+        targetId: docId,
+        metadata: { reason: 'sensitivity' },
+      });
+      throw error;
     }
     const doc = await this.shares.publishDoc({
       workspaceId,

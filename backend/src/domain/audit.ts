@@ -61,6 +61,14 @@ export const AUDIT_ACTIONS = [
   'ai.completion',
   'ai.embed_job',
   'jira.push',
+  'share.blocked',
+  'guard.sensitivity',
+  'guard.retention',
+  'guard.legal_hold',
+  'gdpr.export',
+  'gdpr.erase',
+  'dlp.redact',
+  'dlp.block',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | string;

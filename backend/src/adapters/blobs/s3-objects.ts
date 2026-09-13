@@ -10,6 +10,8 @@ export interface S3BlobOptions {
   endpoint?: string;
   forcePathStyle?: boolean;
   fetch?: typeof fetch;
+  sse?: 'AES256' | 'aws:kms';
+  kmsKeyId?: string;
 }
 
 function hmac(key: Buffer | string, data: string): Buffer {
@@ -117,6 +119,24 @@ export class S3BlobObjects implements BlobObjectStore {
     return { url: target, host };
   }
 
+  private extraPutHeaders(): Array<[string, string]> {
+    const extra: Array<[string, string]> = [];
+    if (this.opts.sse === 'AES256') {
+      extra.push(['x-amz-server-side-encryption', 'AES256']);
+    }
+    if (this.opts.sse === 'aws:kms') {
+      extra.push(['x-amz-server-side-encryption', 'aws:kms']);
+      if (this.opts.kmsKeyId) {
+        extra.push([
+          'x-amz-server-side-encryption-aws-kms-key-id',
+          this.opts.kmsKeyId,
+        ]);
+      }
+    }
+    extra.sort((left, right) => left[0].localeCompare(right[0]));
+    return extra;
+  }
+
   private async request(
     method: 'GET' | 'PUT' | 'DELETE',
     objectKey: string,
@@ -126,12 +146,18 @@ export class S3BlobObjects implements BlobObjectStore {
     const now = new Date();
     const { amz, stamp } = amzDate(now);
     const payloadHash = body ? sha256Hex(body) : sha256Hex('');
-    const canonicalHeaders = [
-      `host:${host}`,
-      `x-amz-content-sha256:${payloadHash}`,
-      `x-amz-date:${amz}`,
-    ].join('\n');
-    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    const extra = method === 'PUT' ? this.extraPutHeaders() : [];
+    const headerPairs: Array<[string, string]> = [
+      ['host', host],
+      ['x-amz-content-sha256', payloadHash],
+      ['x-amz-date', amz],
+      ...extra,
+    ];
+    headerPairs.sort((left, right) => left[0].localeCompare(right[0]));
+    const canonicalHeaders = headerPairs
+      .map(([name, value]) => `${name}:${value}`)
+      .join('\n');
+    const signedHeaders = headerPairs.map(([name]) => name).join(';');
     const canonicalRequest = [
       method,
       url.pathname,
@@ -154,11 +180,11 @@ export class S3BlobObjects implements BlobObjectStore {
       .update(stringToSign, 'utf8')
       .digest('hex');
     const headers: Record<string, string> = {
-      host,
-      'x-amz-content-sha256': payloadHash,
-      'x-amz-date': amz,
       authorization: `AWS4-HMAC-SHA256 Credential=${this.opts.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     };
+    for (const [name, value] of headerPairs) {
+      headers[name] = value;
+    }
     const init: RequestInit = { method, headers };
     if (body) {
       init.body = Buffer.from(body);
