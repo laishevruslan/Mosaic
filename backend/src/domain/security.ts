@@ -2,9 +2,12 @@ export interface SecurityPolicy {
   workspaceId: string | null;
   allowedGuestDomains: string[];
   blockPublicLinks: boolean;
+  blockPublicEditLinks: boolean;
   requireSso: boolean;
   requireSsoDomains: string[];
   sessionMaxDurationSec: number | null;
+  sessionIdleSec: number | null;
+  ipAllowlist: string[];
   updatedAt: Date;
 }
 
@@ -16,9 +19,12 @@ export function defaultSecurityPolicy(
     workspaceId,
     allowedGuestDomains: [],
     blockPublicLinks: false,
+    blockPublicEditLinks: false,
     requireSso: false,
     requireSsoDomains: [],
     sessionMaxDurationSec: null,
+    sessionIdleSec: null,
+    ipAllowlist: [],
     updatedAt: now,
   };
 }

@@ -75,7 +75,7 @@ Implemented operations:
 | ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `serverConfig`    | `server-config.gql`       | `version` = `MOSAIC_COMPAT_VERSION` (`>= 0.27.0`), `type: Selfhosted`, `initialized`, password min/max |
 | `oauthProviders`  | `get-oauth-providers.gql` | `OAuthProviderType` list; empty until `MOSAIC_OIDC_*` is set (Phase 6)                                 |
-| `appConfig`       | `admin/config.gql`        | Stub `{}` + `compat.stub` log                                                                          |
+| `appConfig`       | `admin/config.gql`        | Mosaic read-model (server/auth/flags/mailer/storage); secrets env-only |
 | `getCurrentUser`  | `get-current-user.gql`    | `null` when logged out; `features` includes `Admin` for first user                                     |
 | `quota`           | `quota.gql`               | Generous Mosaic stub on `UserType` (not AFFiNE seats)                                                  |
 | `getWorkspaces`   | `get-workspaces.gql`      | Empty list when logged out                                                                             |
@@ -85,7 +85,7 @@ Implemented operations:
 
 `ServerDeploymentType.Selfhosted` and `ServerFeature` enum values are client-owned. Mosaic advertises `Comment` always, `Indexer` always (query-time search), `OAuth` when OIDC is configured, `Copilot` only when `MOSAIC_AI_API_KEY` is set. It must not enable `Payment` or `CopilotEmbedding`. `mosaic` is `GET /info` only, not a GraphQL `ServerFeature`.
 
-Out of MVP: license, Stripe, calendar, MCP, admin analytics. Stub with `null` / empty / `compat.stub` log.
+Out of MVP (later phases): license, Stripe, calendar, MCP, admin analytics/users. Notifications, appConfig, SMTP outbox, S3/Redis/jobs are E-Plat.
 
 ---
 

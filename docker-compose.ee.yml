@@ -7,7 +7,7 @@ name: mosaic-ee
 
 services:
   mosaic:
-    image: ghcr.io/laishevruslan/mosaic-aio:main-79dac1d9e509a5c3da997be21a3dd05161172886
+    image: ghcr.io/laishevruslan/mosaic-aio:main-e1becd086a3da2b2b265b548cc11ed59601c8bfc
     container_name: mosaic_ee_server
     ports:
       - '${PORT:-3010}:3010'
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
 
   mosaic_migration:
-    image: ghcr.io/laishevruslan/mosaic-aio:main-79dac1d9e509a5c3da997be21a3dd05161172886
+    image: ghcr.io/laishevruslan/mosaic-aio:main-e1becd086a3da2b2b265b548cc11ed59601c8bfc
     container_name: mosaic_ee_migration
     volumes:
       - ./data/storage:/root/.affine/storage

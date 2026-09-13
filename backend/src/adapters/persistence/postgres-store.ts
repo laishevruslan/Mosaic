@@ -27,7 +27,9 @@ import type {
   Session,
   User,
   UserFeature,
+  UserListFilter,
   Workspace,
+  WorkspaceListFilter,
   WorkspaceMember,
   WorkspaceRole,
 } from '../../domain/identity.js';
@@ -45,9 +47,19 @@ import type {
 import type { OauthAccount } from '../../domain/sso.js';
 import type { SecurityPolicy } from '../../domain/security.js';
 import type { WorkspaceWebhook } from '../../domain/webhook.js';
+import type { JobName, JobRecord, JobStatus } from '../../domain/jobs.js';
+import type {
+  NotificationLevel,
+  NotificationPrefs,
+  NotificationRecord,
+  NotificationType,
+  OutboxEmail,
+  OutboxEmailStatus,
+} from '../../domain/notify.js';
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc, PublicDocMode } from '../../domain/share.js';
 import { applyMigrations } from './migrate.js';
+import { PostgresE0Store } from './postgres-e0.js';
 
 interface UserRow {
   id: string;
@@ -56,6 +68,7 @@ interface UserRow {
   email_verified: boolean;
   avatar_url: string | null;
   features: string[];
+  disabled: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -91,6 +104,9 @@ interface WorkspaceRow {
   enable_sharing: boolean;
   enable_url_preview: boolean;
   enable_ai: boolean;
+  enable_doc_embedding: boolean;
+  avatar_key: string | null;
+  org_id: string | null;
   created_at: Date;
   created_by: string | null;
 }
@@ -172,7 +188,8 @@ function mapUser(row: UserRow): User {
     name: row.name,
     emailVerified: row.email_verified,
     avatarUrl: row.avatar_url,
-    features: row.features as UserFeature[],
+    features: (row.features ?? []) as UserFeature[],
+    disabled: Boolean(row.disabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -212,6 +229,9 @@ function mapWorkspace(row: WorkspaceRow): Workspace {
     enableSharing: row.enable_sharing,
     enableUrlPreview: row.enable_url_preview,
     enableAi: row.enable_ai,
+    enableDocEmbedding: Boolean(row.enable_doc_embedding),
+    avatarKey: row.avatar_key ?? null,
+    orgId: row.org_id ?? null,
     createdAt: row.created_at,
     createdBy: row.created_by,
   };
@@ -440,10 +460,12 @@ function paginate<T extends { createdAt: Date; id: string }>(
   };
 }
 
-export class PostgresStore implements MosaicStore {
+export class PostgresStore extends PostgresE0Store implements MosaicStore {
   readonly kind = 'postgres' as const;
 
-  constructor(private readonly sql: postgres.Sql) {}
+  constructor(sql: postgres.Sql) {
+    super(sql);
+  }
 
   static async connect(databaseUrl: string): Promise<PostgresStore> {
     const sql = postgres(databaseUrl, {
@@ -490,10 +512,10 @@ export class PostgresStore implements MosaicStore {
     try {
       await this.sql.begin(async tx => {
         await tx`
-          INSERT INTO users (id, email, name, email_verified, avatar_url, features, created_at, updated_at)
+          INSERT INTO users (id, email, name, email_verified, avatar_url, features, disabled, created_at, updated_at)
           VALUES (
             ${user.id}, ${user.email}, ${user.name}, ${user.emailVerified},
-            ${user.avatarUrl}, ${user.features}, ${user.createdAt}, ${user.updatedAt}
+            ${user.avatarUrl}, ${user.features}, ${user.disabled ?? false}, ${user.createdAt}, ${user.updatedAt}
           )
         `;
         if (passwordHash) {
@@ -515,7 +537,10 @@ export class PostgresStore implements MosaicStore {
   async updateUser(
     id: string,
     patch: Partial<
-      Pick<User, 'name' | 'avatarUrl' | 'emailVerified' | 'features'>
+      Pick<
+        User,
+        'name' | 'avatarUrl' | 'emailVerified' | 'features' | 'disabled' | 'email'
+      >
     >
   ): Promise<User> {
     const current = await this.findUserById(id);
@@ -527,16 +552,62 @@ export class PostgresStore implements MosaicStore {
       ...patch,
       updatedAt: new Date(),
     };
-    await this.sql`
-      UPDATE users SET
-        name = ${next.name},
-        avatar_url = ${next.avatarUrl},
-        email_verified = ${next.emailVerified},
-        features = ${next.features},
-        updated_at = ${next.updatedAt}
-      WHERE id = ${id}
-    `;
+    try {
+      await this.sql`
+        UPDATE users SET
+          name = ${next.name},
+          email = ${next.email},
+          avatar_url = ${next.avatarUrl},
+          email_verified = ${next.emailVerified},
+          features = ${next.features},
+          disabled = ${next.disabled},
+          updated_at = ${next.updatedAt}
+        WHERE id = ${id}
+      `;
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw errors.emailAlreadyUsed();
+      }
+      throw error;
+    }
     return next;
+  }
+
+  async listUsers(filter: UserListFilter): Promise<User[]> {
+    const skip = Math.max(0, filter.skip ?? 0);
+    const take = Math.min(100, Math.max(1, filter.take ?? 20));
+    const keyword = filter.keyword?.trim()
+      ? `%${filter.keyword.trim().toLowerCase()}%`
+      : null;
+    const features = filter.features ?? [];
+    const rows = await this.sql<UserRow[]>`
+      SELECT * FROM users
+      WHERE (${keyword}::text IS NULL OR lower(email) LIKE ${keyword} OR lower(name) LIKE ${keyword})
+        AND (${features.length} = 0 OR features @> ${features}::text[])
+      ORDER BY created_at ASC, id ASC
+      OFFSET ${skip} LIMIT ${take}
+    `;
+    return rows.map(mapUser);
+  }
+
+  async countUsersFiltered(
+    filter: Omit<UserListFilter, 'skip' | 'take'>
+  ): Promise<number> {
+    const keyword = filter.keyword?.trim()
+      ? `%${filter.keyword.trim().toLowerCase()}%`
+      : null;
+    const features = filter.features ?? [];
+    const [row] = await this.sql<{ count: string }[]>`
+      SELECT count(*)::text AS count FROM users
+      WHERE (${keyword}::text IS NULL OR lower(email) LIKE ${keyword} OR lower(name) LIKE ${keyword})
+        AND (${features.length} = 0 OR features @> ${features}::text[])
+    `;
+    return Number(row?.count ?? 0);
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const rows = await this.sql`DELETE FROM users WHERE id = ${id}`;
+    return rows.count > 0;
   }
 
   async getCredential(userId: string): Promise<Credential | null> {
@@ -552,6 +623,24 @@ export class PostgresStore implements MosaicStore {
           updatedAt: row.updated_at,
         }
       : null;
+  }
+
+  async setCredential(
+    userId: string,
+    passwordHash: string,
+    at: Date
+  ): Promise<void> {
+    await this.sql`
+      INSERT INTO credentials (user_id, password_hash, updated_at)
+      VALUES (${userId}, ${passwordHash}, ${at})
+      ON CONFLICT (user_id) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        updated_at = EXCLUDED.updated_at
+    `;
+  }
+
+  async deleteCredential(userId: string): Promise<void> {
+    await this.sql`DELETE FROM credentials WHERE user_id = ${userId}`;
   }
 
   async createSession(session: Session): Promise<Session> {
@@ -676,12 +765,14 @@ export class PostgresStore implements MosaicStore {
     await this.sql.begin(async tx => {
       await tx`
         INSERT INTO workspaces (
-          id, name, is_public, initialized, team, enable_sharing, enable_url_preview, enable_ai, created_at, created_by
+          id, name, is_public, initialized, team, enable_sharing, enable_url_preview, enable_ai,
+          enable_doc_embedding, avatar_key, org_id, created_at, created_by
         )
         VALUES (
           ${workspace.id}, ${workspace.name}, ${workspace.isPublic}, ${workspace.initialized},
           ${workspace.team}, ${workspace.enableSharing}, ${workspace.enableUrlPreview},
-          ${workspace.enableAi}, ${workspace.createdAt}, ${workspace.createdBy}
+          ${workspace.enableAi}, ${workspace.enableDocEmbedding}, ${workspace.avatarKey},
+          ${workspace.orgId}, ${workspace.createdAt}, ${workspace.createdBy}
         )
       `;
       await tx`
@@ -707,6 +798,49 @@ export class PostgresStore implements MosaicStore {
       ORDER BY w.id
     `;
     return rows.map(mapWorkspace);
+  }
+
+  async listWorkspaceIds(): Promise<string[]> {
+    const rows = await this.sql<{ id: string }[]>`SELECT id FROM workspaces`;
+    return rows.map(row => row.id);
+  }
+
+  async listAllWorkspaces(filter: WorkspaceListFilter): Promise<Workspace[]> {
+    const skip = Math.max(0, filter.skip ?? 0);
+    const take = Math.min(100, Math.max(1, filter.take ?? 20));
+    const keyword = filter.keyword?.trim()
+      ? `%${filter.keyword.trim().toLowerCase()}%`
+      : null;
+    const rows = await this.sql<WorkspaceRow[]>`
+      SELECT * FROM workspaces
+      WHERE (${keyword}::text IS NULL OR lower(name) LIKE ${keyword})
+        AND (${filter.isPublic ?? null}::boolean IS NULL OR is_public = ${filter.isPublic ?? null})
+        AND (${filter.enableAi ?? null}::boolean IS NULL OR enable_ai = ${filter.enableAi ?? null})
+        AND (${filter.enableSharing ?? null}::boolean IS NULL OR enable_sharing = ${filter.enableSharing ?? null})
+        AND (${filter.enableUrlPreview ?? null}::boolean IS NULL OR enable_url_preview = ${filter.enableUrlPreview ?? null})
+        AND (${filter.enableDocEmbedding ?? null}::boolean IS NULL OR enable_doc_embedding = ${filter.enableDocEmbedding ?? null})
+      ORDER BY created_at DESC, id DESC
+      OFFSET ${skip} LIMIT ${take}
+    `;
+    return rows.map(mapWorkspace);
+  }
+
+  async countAllWorkspaces(
+    filter: Omit<WorkspaceListFilter, 'skip' | 'take'>
+  ): Promise<number> {
+    const keyword = filter.keyword?.trim()
+      ? `%${filter.keyword.trim().toLowerCase()}%`
+      : null;
+    const [row] = await this.sql<{ count: string }[]>`
+      SELECT count(*)::text AS count FROM workspaces
+      WHERE (${keyword}::text IS NULL OR lower(name) LIKE ${keyword})
+        AND (${filter.isPublic ?? null}::boolean IS NULL OR is_public = ${filter.isPublic ?? null})
+        AND (${filter.enableAi ?? null}::boolean IS NULL OR enable_ai = ${filter.enableAi ?? null})
+        AND (${filter.enableSharing ?? null}::boolean IS NULL OR enable_sharing = ${filter.enableSharing ?? null})
+        AND (${filter.enableUrlPreview ?? null}::boolean IS NULL OR enable_url_preview = ${filter.enableUrlPreview ?? null})
+        AND (${filter.enableDocEmbedding ?? null}::boolean IS NULL OR enable_doc_embedding = ${filter.enableDocEmbedding ?? null})
+    `;
+    return Number(row?.count ?? 0);
   }
 
   async deleteWorkspace(id: string): Promise<boolean> {
@@ -1211,6 +1345,10 @@ export class PostgresStore implements MosaicStore {
         ? { enableUrlPreview: patch.enableUrlPreview }
         : {}),
       ...(patch.enableAi !== undefined ? { enableAi: patch.enableAi } : {}),
+      ...(patch.enableDocEmbedding !== undefined
+        ? { enableDocEmbedding: patch.enableDocEmbedding }
+        : {}),
+      ...(patch.avatarKey !== undefined ? { avatarKey: patch.avatarKey } : {}),
     };
     await this.sql`
       UPDATE workspaces SET
@@ -1218,7 +1356,9 @@ export class PostgresStore implements MosaicStore {
         is_public = ${next.isPublic},
         enable_sharing = ${next.enableSharing},
         enable_url_preview = ${next.enableUrlPreview},
-        enable_ai = ${next.enableAi}
+        enable_ai = ${next.enableAi},
+        enable_doc_embedding = ${next.enableDocEmbedding},
+        avatar_key = ${next.avatarKey}
       WHERE id = ${id}
     `;
     return next;
@@ -1394,6 +1534,13 @@ export class PostgresStore implements MosaicStore {
   async listPublicDocs(workspaceId: string): Promise<PublicDoc[]> {
     const rows = await this.sql<PublicDocRow[]>`
       SELECT * FROM public_docs WHERE workspace_id = ${workspaceId} ORDER BY published_at
+    `;
+    return rows.map(mapPublicDoc);
+  }
+
+  async listAllPublicDocs(): Promise<PublicDoc[]> {
+    const rows = await this.sql<PublicDocRow[]>`
+      SELECT * FROM public_docs ORDER BY published_at DESC
     `;
     return rows.map(mapPublicDoc);
   }
@@ -1626,15 +1773,17 @@ export class PostgresStore implements MosaicStore {
   ): Promise<SecurityPolicy | null> {
     if (workspaceId) {
       const [row] = await this.sql<PolicyRow[]>`
-        SELECT workspace_id, allowed_guest_domains, block_public_links, require_sso,
-               require_sso_domains, session_max_duration_sec, updated_at
+        SELECT workspace_id, allowed_guest_domains, block_public_links, block_public_edit_links,
+               require_sso, require_sso_domains, session_max_duration_sec, session_idle_sec,
+               ip_allowlist, updated_at
         FROM workspace_security_policies WHERE workspace_id = ${workspaceId}
       `;
       return row ? mapPolicy(row) : null;
     }
     const [row] = await this.sql<PolicyRow[]>`
-      SELECT NULL::uuid AS workspace_id, allowed_guest_domains, block_public_links, require_sso,
-             require_sso_domains, session_max_duration_sec, updated_at
+      SELECT NULL::uuid AS workspace_id, allowed_guest_domains, block_public_links,
+             block_public_edit_links, require_sso, require_sso_domains, session_max_duration_sec,
+             session_idle_sec, ip_allowlist, updated_at
       FROM instance_security_policy WHERE id = 1
     `;
     return row ? mapPolicy(row) : null;
@@ -1644,38 +1793,47 @@ export class PostgresStore implements MosaicStore {
     if (policy.workspaceId) {
       await this.sql`
         INSERT INTO workspace_security_policies (
-          workspace_id, allowed_guest_domains, block_public_links, require_sso,
-          require_sso_domains, session_max_duration_sec, updated_at
+          workspace_id, allowed_guest_domains, block_public_links, block_public_edit_links,
+          require_sso, require_sso_domains, session_max_duration_sec, session_idle_sec,
+          ip_allowlist, updated_at
         ) VALUES (
           ${policy.workspaceId}, ${policy.allowedGuestDomains}, ${policy.blockPublicLinks},
-          ${policy.requireSso}, ${policy.requireSsoDomains}, ${policy.sessionMaxDurationSec},
+          ${policy.blockPublicEditLinks}, ${policy.requireSso}, ${policy.requireSsoDomains},
+          ${policy.sessionMaxDurationSec}, ${policy.sessionIdleSec}, ${policy.ipAllowlist},
           ${policy.updatedAt}
         )
         ON CONFLICT (workspace_id) DO UPDATE SET
           allowed_guest_domains = EXCLUDED.allowed_guest_domains,
           block_public_links = EXCLUDED.block_public_links,
+          block_public_edit_links = EXCLUDED.block_public_edit_links,
           require_sso = EXCLUDED.require_sso,
           require_sso_domains = EXCLUDED.require_sso_domains,
           session_max_duration_sec = EXCLUDED.session_max_duration_sec,
+          session_idle_sec = EXCLUDED.session_idle_sec,
+          ip_allowlist = EXCLUDED.ip_allowlist,
           updated_at = EXCLUDED.updated_at
       `;
       return policy;
     }
     await this.sql`
       INSERT INTO instance_security_policy (
-        id, allowed_guest_domains, block_public_links, require_sso,
-        require_sso_domains, session_max_duration_sec, updated_at
+        id, allowed_guest_domains, block_public_links, block_public_edit_links,
+        require_sso, require_sso_domains, session_max_duration_sec, session_idle_sec,
+        ip_allowlist, updated_at
       ) VALUES (
-        1, ${policy.allowedGuestDomains}, ${policy.blockPublicLinks},
+        1, ${policy.allowedGuestDomains}, ${policy.blockPublicLinks}, ${policy.blockPublicEditLinks},
         ${policy.requireSso}, ${policy.requireSsoDomains}, ${policy.sessionMaxDurationSec},
-        ${policy.updatedAt}
+        ${policy.sessionIdleSec}, ${policy.ipAllowlist}, ${policy.updatedAt}
       )
       ON CONFLICT (id) DO UPDATE SET
         allowed_guest_domains = EXCLUDED.allowed_guest_domains,
         block_public_links = EXCLUDED.block_public_links,
+        block_public_edit_links = EXCLUDED.block_public_edit_links,
         require_sso = EXCLUDED.require_sso,
         require_sso_domains = EXCLUDED.require_sso_domains,
         session_max_duration_sec = EXCLUDED.session_max_duration_sec,
+        session_idle_sec = EXCLUDED.session_idle_sec,
+        ip_allowlist = EXCLUDED.ip_allowlist,
         updated_at = EXCLUDED.updated_at
     `;
     return policy;
@@ -1773,6 +1931,271 @@ export class PostgresStore implements MosaicStore {
     `;
     return rows.map(mapCopilotMessage);
   }
+
+  async getSetting(key: string): Promise<unknown | null> {
+    const [row] = await this.sql<{ value: unknown }[]>`
+      SELECT value FROM instance_settings WHERE key = ${key}
+    `;
+    return row ? row.value : null;
+  }
+
+  async putSetting(key: string, value: unknown): Promise<void> {
+    await this.sql`
+      INSERT INTO instance_settings (key, value)
+      VALUES (${key}, ${this.sql.json(asJson(value))})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `;
+  }
+
+  async createNotification(
+    notification: NotificationRecord
+  ): Promise<NotificationRecord> {
+    await this.sql`
+      INSERT INTO notifications (
+        id, user_id, type, level, read, body, created_at, updated_at
+      ) VALUES (
+        ${notification.id}, ${notification.userId}, ${notification.type},
+        ${notification.level}, ${notification.read},
+        ${this.sql.json(asJson(notification.body))},
+        ${notification.createdAt}, ${notification.updatedAt}
+      )
+    `;
+    return notification;
+  }
+
+  async getNotification(id: string): Promise<NotificationRecord | null> {
+    const [row] = await this.sql<NotificationRow[]>`
+      SELECT * FROM notifications WHERE id = ${id}
+    `;
+    return row ? mapNotification(row) : null;
+  }
+
+  async listNotifications(
+    userId: string,
+    pagination?: Pagination
+  ): Promise<{
+    items: NotificationRecord[];
+    totalCount: number;
+    hasNextPage: boolean;
+  }> {
+    const [countRow] = await this.sql<{ count: string }[]>`
+      SELECT count(*)::text AS count FROM notifications WHERE user_id = ${userId}
+    `;
+    const totalCount = Number(countRow?.count ?? 0);
+    const limit = paginationLimit(pagination, 8);
+    const cursor = pagination?.after
+      ? decodeCursor(pagination.after)
+      : undefined;
+    const offset = Math.max(0, pagination?.offset ?? 0);
+    const rows = cursor
+      ? await this.sql<NotificationRow[]>`
+          SELECT * FROM notifications
+          WHERE user_id = ${userId}
+            AND (created_at, id) < (${cursor.at}, ${cursor.id})
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${limit + 1}
+        `
+      : await this.sql<NotificationRow[]>`
+          SELECT * FROM notifications
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC, id DESC
+          OFFSET ${offset}
+          LIMIT ${limit + 1}
+        `;
+    const hasNextPage = rows.length > limit;
+    const items = rows.slice(0, limit).map(mapNotification);
+    return { items, totalCount, hasNextPage };
+  }
+
+  async markNotificationRead(
+    id: string,
+    userId: string,
+    at: Date
+  ): Promise<boolean> {
+    const result = await this.sql`
+      UPDATE notifications
+      SET read = TRUE, updated_at = ${at}
+      WHERE id = ${id} AND user_id = ${userId}
+    `;
+    return result.count > 0;
+  }
+
+  async markAllNotificationsRead(userId: string, at: Date): Promise<number> {
+    const result = await this.sql`
+      UPDATE notifications
+      SET read = TRUE, updated_at = ${at}
+      WHERE user_id = ${userId} AND read = FALSE
+    `;
+    return result.count;
+  }
+
+  async countUnreadNotifications(userId: string): Promise<number> {
+    const [row] = await this.sql<{ count: string }[]>`
+      SELECT count(*)::text AS count
+      FROM notifications WHERE user_id = ${userId} AND read = FALSE
+    `;
+    return Number(row?.count ?? 0);
+  }
+
+  async getNotificationPrefs(userId: string): Promise<NotificationPrefs | null> {
+    const [row] = await this.sql<PrefsRow[]>`
+      SELECT * FROM notification_prefs WHERE user_id = ${userId}
+    `;
+    return row ? mapPrefs(row) : null;
+  }
+
+  async upsertNotificationPrefs(
+    prefs: NotificationPrefs
+  ): Promise<NotificationPrefs> {
+    await this.sql`
+      INSERT INTO notification_prefs (
+        user_id, receive_invitation_email, receive_mention_email, receive_comment_email
+      ) VALUES (
+        ${prefs.userId}, ${prefs.receiveInvitationEmail},
+        ${prefs.receiveMentionEmail}, ${prefs.receiveCommentEmail}
+      )
+      ON CONFLICT (user_id) DO UPDATE SET
+        receive_invitation_email = EXCLUDED.receive_invitation_email,
+        receive_mention_email = EXCLUDED.receive_mention_email,
+        receive_comment_email = EXCLUDED.receive_comment_email
+    `;
+    return prefs;
+  }
+
+  async enqueueOutbox(email: OutboxEmail): Promise<OutboxEmail> {
+    await this.sql`
+      INSERT INTO outbox_emails (
+        id, to_email, subject, text, html, template, payload, status,
+        attempts, last_error, scheduled_at, sent_at, created_at
+      ) VALUES (
+        ${email.id}, ${email.toEmail}, ${email.subject}, ${email.text},
+        ${email.html}, ${email.template},
+        ${this.sql.json(asJson(email.payload))},
+        ${email.status}, ${email.attempts}, ${email.lastError},
+        ${email.scheduledAt}, ${email.sentAt}, ${email.createdAt}
+      )
+    `;
+    return email;
+  }
+
+  async getOutbox(id: string): Promise<OutboxEmail | null> {
+    const [row] = await this.sql<OutboxRow[]>`
+      SELECT * FROM outbox_emails WHERE id = ${id}
+    `;
+    return row ? mapOutbox(row) : null;
+  }
+
+  async listOutbox(from: Date, to: Date): Promise<OutboxEmail[]> {
+    const rows = await this.sql<OutboxRow[]>`
+      SELECT * FROM outbox_emails
+      WHERE created_at >= ${from} AND created_at <= ${to}
+      ORDER BY created_at DESC
+    `;
+    return rows.map(mapOutbox);
+  }
+
+  async listPendingOutbox(limit: number, now: Date): Promise<OutboxEmail[]> {
+    const rows = await this.sql<OutboxRow[]>`
+      SELECT * FROM outbox_emails
+      WHERE status = 'pending' AND scheduled_at <= ${now}
+      ORDER BY scheduled_at ASC
+      LIMIT ${limit}
+    `;
+    return rows.map(mapOutbox);
+  }
+
+  async updateOutbox(
+    id: string,
+    patch: Partial<
+      Pick<OutboxEmail, 'status' | 'attempts' | 'lastError' | 'sentAt'>
+    >
+  ): Promise<OutboxEmail> {
+    const current = await this.getOutbox(id);
+    if (!current) {
+      throw new Error('outbox not found');
+    }
+    const next: OutboxEmail = { ...current, ...patch, id: current.id };
+    await this.sql`
+      UPDATE outbox_emails SET
+        status = ${next.status},
+        attempts = ${next.attempts},
+        last_error = ${next.lastError},
+        sent_at = ${next.sentAt}
+      WHERE id = ${id}
+    `;
+    return next;
+  }
+
+  async enqueueJob(job: JobRecord): Promise<JobRecord> {
+    await this.sql`
+      INSERT INTO job_queue (
+        id, name, payload, status, attempts, max_attempts, run_at,
+        locked_at, locked_by, last_error, created_at
+      ) VALUES (
+        ${job.id}, ${job.name},
+        ${this.sql.json(asJson(job.payload))},
+        ${job.status}, ${job.attempts}, ${job.maxAttempts}, ${job.runAt},
+        ${job.lockedAt}, ${job.lockedBy}, ${job.lastError}, ${job.createdAt}
+      )
+    `;
+    return job;
+  }
+
+  async claimDueJobs(
+    limit: number,
+    now: Date,
+    lockUntil: Date,
+    workerId: string
+  ): Promise<JobRecord[]> {
+    const rows = await this.sql<JobRow[]>`
+      UPDATE job_queue AS q
+      SET
+        status = 'running',
+        locked_at = ${lockUntil},
+        locked_by = ${workerId},
+        attempts = q.attempts + 1
+      FROM (
+        SELECT id FROM job_queue
+        WHERE status = 'pending' AND run_at <= ${now}
+        ORDER BY run_at ASC, created_at ASC
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      ) AS due
+      WHERE q.id = due.id
+      RETURNING q.*
+    `;
+    return rows.map(mapJob);
+  }
+
+  async completeJob(id: string): Promise<void> {
+    await this.sql`
+      UPDATE job_queue
+      SET status = 'completed', locked_at = NULL, locked_by = NULL
+      WHERE id = ${id}
+    `;
+  }
+
+  async failJob(
+    id: string,
+    error: string,
+    retryAt: Date | null
+  ): Promise<void> {
+    if (retryAt) {
+      await this.sql`
+        UPDATE job_queue
+        SET status = 'pending', last_error = ${error},
+            run_at = ${retryAt}, locked_at = NULL, locked_by = NULL
+        WHERE id = ${id}
+      `;
+      return;
+    }
+    await this.sql`
+      UPDATE job_queue
+      SET status = 'failed', last_error = ${error},
+          locked_at = NULL, locked_by = NULL
+      WHERE id = ${id}
+    `;
+  }
 }
 
 interface OauthRow {
@@ -1800,9 +2223,12 @@ interface PolicyRow {
   workspace_id: string | null;
   allowed_guest_domains: string[];
   block_public_links: boolean;
+  block_public_edit_links: boolean;
   require_sso: boolean;
   require_sso_domains: string[];
   session_max_duration_sec: number | null;
+  session_idle_sec: number | null;
+  ip_allowlist: string[];
   updated_at: Date;
 }
 
@@ -1866,9 +2292,12 @@ function mapPolicy(row: PolicyRow): SecurityPolicy {
     workspaceId: row.workspace_id,
     allowedGuestDomains: row.allowed_guest_domains ?? [],
     blockPublicLinks: row.block_public_links,
+    blockPublicEditLinks: Boolean(row.block_public_edit_links),
     requireSso: row.require_sso,
     requireSsoDomains: row.require_sso_domains ?? [],
     sessionMaxDurationSec: row.session_max_duration_sec,
+    sessionIdleSec: row.session_idle_sec ?? null,
+    ipAllowlist: row.ip_allowlist ?? [],
     updatedAt: row.updated_at,
   };
 }
@@ -1905,6 +2334,110 @@ function mapCopilotMessage(row: CopilotMessageRow): CopilotMessageRecord {
     sessionId: row.session_id,
     role: row.role,
     content: row.content,
+    createdAt: row.created_at,
+  };
+}
+
+interface NotificationRow {
+  id: string;
+  user_id: string;
+  type: string;
+  level: string;
+  read: boolean;
+  body: Record<string, unknown>;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface PrefsRow {
+  user_id: string;
+  receive_invitation_email: boolean;
+  receive_mention_email: boolean;
+  receive_comment_email: boolean;
+}
+
+interface OutboxRow {
+  id: string;
+  to_email: string;
+  subject: string;
+  text: string;
+  html: string;
+  template: string;
+  payload: Record<string, unknown>;
+  status: OutboxEmailStatus;
+  attempts: number;
+  last_error: string | null;
+  scheduled_at: Date;
+  sent_at: Date | null;
+  created_at: Date;
+}
+
+interface JobRow {
+  id: string;
+  name: JobName;
+  payload: Record<string, unknown>;
+  status: JobStatus;
+  attempts: number;
+  max_attempts: number;
+  run_at: Date;
+  locked_at: Date | null;
+  locked_by: string | null;
+  last_error: string | null;
+  created_at: Date;
+}
+
+function mapNotification(row: NotificationRow): NotificationRecord {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type as NotificationType,
+    level: row.level as NotificationLevel,
+    read: row.read,
+    body: row.body ?? {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPrefs(row: PrefsRow): NotificationPrefs {
+  return {
+    userId: row.user_id,
+    receiveInvitationEmail: row.receive_invitation_email,
+    receiveMentionEmail: row.receive_mention_email,
+    receiveCommentEmail: row.receive_comment_email,
+  };
+}
+
+function mapOutbox(row: OutboxRow): OutboxEmail {
+  return {
+    id: row.id,
+    toEmail: row.to_email,
+    subject: row.subject,
+    text: row.text,
+    html: row.html,
+    template: row.template,
+    payload: row.payload ?? {},
+    status: row.status,
+    attempts: row.attempts,
+    lastError: row.last_error,
+    scheduledAt: row.scheduled_at,
+    sentAt: row.sent_at,
+    createdAt: row.created_at,
+  };
+}
+
+function mapJob(row: JobRow): JobRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    payload: row.payload ?? {},
+    status: row.status,
+    attempts: row.attempts,
+    maxAttempts: row.max_attempts,
+    runAt: row.run_at,
+    lockedAt: row.locked_at,
+    lockedBy: row.locked_by,
+    lastError: row.last_error,
     createdAt: row.created_at,
   };
 }

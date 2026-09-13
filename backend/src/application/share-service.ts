@@ -43,6 +43,9 @@ export class ShareService {
     }
     await this.extras.policy?.assertPublicLinksAllowed(workspaceId);
     const resolved: PublicDocMode = isPublicDocMode(mode) ? mode : 'Page';
+    if (resolved === 'Edgeless') {
+      await this.extras.policy?.assertPublicEditLinksAllowed(workspaceId);
+    }
     const doc = await this.shares.publishDoc({
       workspaceId,
       docId,

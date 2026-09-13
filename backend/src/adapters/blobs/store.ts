@@ -1,8 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 
 import type { BlobObjectStore } from '../../domain/ports.js';
+import { GcsBlobObjects } from './gcs-objects.js';
 import { MemoryBlobObjects } from './memory-objects.js';
+import { S3BlobObjects } from './s3-objects.js';
 
 function assertSafeKey(root: string, objectKey: string): string {
   const full = resolve(root, objectKey);
@@ -14,6 +16,7 @@ function assertSafeKey(root: string, objectKey: string): string {
 }
 
 export class FileSystemBlobObjects implements BlobObjectStore {
+  readonly driver = 'fs' as const;
   constructor(private readonly root: string) {}
 
   async put(objectKey: string, bytes: Uint8Array): Promise<void> {
@@ -43,16 +46,51 @@ export class FileSystemBlobObjects implements BlobObjectStore {
   async close(): Promise<void> {}
 }
 
-export function createBlobObjects(input: {
-  driver?: 'memory' | 'fs';
+export interface BlobObjectsInput {
+  driver?: 'memory' | 'fs' | 's3' | 'gcs';
   dir: string;
   nodeEnv: string;
-}): BlobObjectStore {
+  s3?: {
+    bucket?: string;
+    region: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    endpoint?: string;
+    forcePathStyle: boolean;
+  };
+  gcsBucket?: string;
+}
+
+export function createBlobObjects(input: BlobObjectsInput): BlobObjectStore {
   if (
     input.driver === 'memory' ||
     (!input.driver && input.nodeEnv === 'test')
   ) {
     return new MemoryBlobObjects();
+  }
+  if (input.driver === 's3') {
+    const bucket = input.s3?.bucket?.trim();
+    const accessKeyId = input.s3?.accessKeyId?.trim();
+    const secretAccessKey = input.s3?.secretAccessKey?.trim();
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        'BLOB_DRIVER=s3 requires S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY.'
+      );
+    }
+    const options: ConstructorParameters<typeof S3BlobObjects>[0] = {
+      bucket,
+      region: input.s3?.region ?? 'us-east-1',
+      accessKeyId,
+      secretAccessKey,
+      forcePathStyle: input.s3?.forcePathStyle ?? false,
+    };
+    if (input.s3?.endpoint) {
+      options.endpoint = input.s3.endpoint;
+    }
+    return new S3BlobObjects(options);
+  }
+  if (input.driver === 'gcs') {
+    return new GcsBlobObjects(input.gcsBucket);
   }
   return new FileSystemBlobObjects(resolve(input.dir));
 }

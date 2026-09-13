@@ -3,6 +3,7 @@ import type { User, Workspace, WorkspaceMember } from '../domain/identity.js';
 import type { WorkspacePatch } from '../domain/membership.js';
 import type { Clock, WorkspaceStore } from '../domain/ports.js';
 import type { AuditService } from './audit-service.js';
+import type { OrgService } from './org-service.js';
 
 export interface WorkspaceJanitor {
   purgeWorkspace(workspaceId: string): Promise<void>;
@@ -13,7 +14,8 @@ export class WorkspaceService {
     private readonly store: WorkspaceStore,
     private readonly clock: Clock,
     private readonly janitor?: WorkspaceJanitor,
-    private readonly audit?: AuditService
+    private readonly audit?: AuditService,
+    private readonly orgs?: OrgService
   ) {}
 
   async list(user: User | null): Promise<Workspace[]> {
@@ -60,6 +62,7 @@ export class WorkspaceService {
 
   async create(user: User): Promise<Workspace> {
     const now = this.clock.now();
+    const org = await this.orgs?.default();
     const workspace = await this.store.createWorkspace(
       {
         id: crypto.randomUUID(),
@@ -70,6 +73,9 @@ export class WorkspaceService {
         enableSharing: true,
         enableUrlPreview: false,
         enableAi: false,
+        enableDocEmbedding: false,
+        avatarKey: null,
+        orgId: org?.id ?? null,
         createdAt: now,
         createdBy: user.id,
       },

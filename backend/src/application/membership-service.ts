@@ -58,6 +58,8 @@ export class MembershipService {
       audit?: AuditService;
       policy?: SecurityPolicyService;
       webhooks?: WebhookService;
+      notifications?: import('./notification-service.js').NotificationService;
+      mail?: import('./mail-service.js').MailService;
     } = {}
   ) {}
 
@@ -175,6 +177,21 @@ export class MembershipService {
         acceptedAt: null,
       });
       results.push({ email, inviteId: invite.id, error: null });
+      await this.extras.notifications?.invite(user, {
+        userId: existingUser?.id ?? null,
+        email,
+        workspaceId,
+        inviteId: invite.id,
+      });
+      const workspace = await this.workspaceStore.getWorkspace(workspaceId);
+      await this.extras.mail?.enqueueInvite({
+        toEmail: email,
+        workspaceName: workspace?.name ?? 'Workspace',
+        workspaceId,
+        inviteId: invite.id,
+        inviterName: user.name,
+        userId: existingUser?.id ?? null,
+      });
       await this.extras.audit?.record({
         workspaceId,
         actorId: user.id,

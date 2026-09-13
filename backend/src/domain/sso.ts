@@ -12,6 +12,7 @@ export interface SsoProfile {
   providerAccountId: string;
   email: string;
   name: string;
+  groups: string[];
 }
 
 export interface OidcAuthorizationInput {

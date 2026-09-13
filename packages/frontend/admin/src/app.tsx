@@ -1,5 +1,6 @@
 import { Toaster } from '@affine/admin/components/ui/sonner';
 import { lazy, ROUTES } from '@affine/routes';
+import { getOrCreateI18n, I18nextProvider } from '@affine/i18n';
 import { withSentryReactRouterV7Routing } from '@sentry/react';
 import { useEffect } from 'react';
 import {
@@ -29,6 +30,12 @@ export const Dashboard = lazy(
 );
 export const Workspaces = lazy(
   () => import(/* webpackChunkName: "workspaces" */ './modules/workspaces')
+);
+export const Security = lazy(
+  () => import(/* webpackChunkName: "security" */ './modules/security')
+);
+export const Audit = lazy(
+  () => import(/* webpackChunkName: "audit" */ './modules/audit')
 );
 export const About = lazy(
   () => import(/* webpackChunkName: "about" */ './modules/about')
@@ -88,7 +95,9 @@ function RootRoutes() {
 }
 
 export const App = () => {
+  const i18n = getOrCreateI18n();
   return (
+    <I18nextProvider i18n={i18n}>
     <ThemeProvider>
       <TooltipProvider>
         <SWRConfig
@@ -116,14 +125,10 @@ export const App = () => {
                   <Route path={ROUTES.admin.accounts} element={<Accounts />} />
                   <Route
                     path={ROUTES.admin.workspaces}
-                    element={
-                      environment.isSelfHosted ? (
-                        <Navigate to={ROUTES.admin.accounts} replace />
-                      ) : (
-                        <Workspaces />
-                      )
-                    }
+                    element={<Workspaces />}
                   />
+                  <Route path={ROUTES.admin.security} element={<Security />} />
+                  <Route path={ROUTES.admin.audit} element={<Audit />} />
                   <Route
                     path={ROUTES.admin.ai}
                     element={
@@ -143,5 +148,6 @@ export const App = () => {
         <Toaster />
       </TooltipProvider>
     </ThemeProvider>
+    </I18nextProvider>
   );
 };

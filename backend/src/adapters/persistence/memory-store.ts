@@ -23,7 +23,9 @@ import type {
   Credential,
   Session,
   User,
+  UserListFilter,
   Workspace,
+  WorkspaceListFilter,
   WorkspaceMember,
   WorkspaceRole,
 } from '../../domain/identity.js';
@@ -40,13 +42,21 @@ import type {
 import type { OauthAccount } from '../../domain/sso.js';
 import type { SecurityPolicy } from '../../domain/security.js';
 import type { WorkspaceWebhook } from '../../domain/webhook.js';
+import type { JobRecord } from '../../domain/jobs.js';
+import type {
+  NotificationPrefs,
+  NotificationRecord,
+  OutboxEmail,
+} from '../../domain/notify.js';
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc } from '../../domain/share.js';
+import { MemoryE0Store } from './e0-memory.js';
 
 function cloneUser(user: User): User {
   return {
     ...user,
     features: [...user.features],
+    disabled: Boolean(user.disabled),
     createdAt: new Date(user.createdAt),
     updatedAt: new Date(user.updatedAt),
   };
@@ -79,7 +89,7 @@ function cloneSession(session: Session): Session {
   };
 }
 
-export class MemoryStore implements MosaicStore {
+export class MemoryStore extends MemoryE0Store implements MosaicStore {
   readonly kind = 'memory' as const;
 
   private readonly users = new Map<string, User>();
@@ -107,6 +117,11 @@ export class MemoryStore implements MosaicStore {
   private readonly webhooks = new Map<string, WorkspaceWebhook>();
   private readonly copilotSessions = new Map<string, CopilotSessionRecord>();
   private readonly copilotMessages = new Map<string, CopilotMessageRecord[]>();
+  private readonly settings = new Map<string, unknown>();
+  private readonly notifications = new Map<string, NotificationRecord>();
+  private readonly notificationPrefs = new Map<string, NotificationPrefs>();
+  private readonly outbox = new Map<string, OutboxEmail>();
+  private readonly jobs = new Map<string, JobRecord>();
 
   async ping(): Promise<boolean> {
     return true;
@@ -132,7 +147,7 @@ export class MemoryStore implements MosaicStore {
     if (this.usersByEmail.has(user.email)) {
       throw errors.emailAlreadyUsed();
     }
-    this.users.set(user.id, cloneUser(user));
+    this.users.set(user.id, cloneUser({ ...user, disabled: user.disabled ?? false }));
     this.usersByEmail.set(user.email, user.id);
     if (passwordHash) {
       this.credentials.set(user.id, {
@@ -147,12 +162,22 @@ export class MemoryStore implements MosaicStore {
   async updateUser(
     id: string,
     patch: Partial<
-      Pick<User, 'name' | 'avatarUrl' | 'emailVerified' | 'features'>
+      Pick<
+        User,
+        'name' | 'avatarUrl' | 'emailVerified' | 'features' | 'disabled' | 'email'
+      >
     >
   ): Promise<User> {
     const current = this.users.get(id);
     if (!current) {
       throw new Error('user not found');
+    }
+    if (patch.email && patch.email !== current.email) {
+      if (this.usersByEmail.has(patch.email)) {
+        throw errors.emailAlreadyUsed();
+      }
+      this.usersByEmail.delete(current.email);
+      this.usersByEmail.set(patch.email, id);
     }
     const next: User = {
       ...current,
@@ -164,9 +189,69 @@ export class MemoryStore implements MosaicStore {
     return cloneUser(next);
   }
 
+  async listUsers(filter: UserListFilter): Promise<User[]> {
+    const skip = Math.max(0, filter.skip ?? 0);
+    const take = Math.min(100, Math.max(1, filter.take ?? 20));
+    return this.filteredUsers(filter)
+      .slice(skip, skip + take)
+      .map(cloneUser);
+  }
+
+  async countUsersFiltered(
+    filter: Omit<UserListFilter, 'skip' | 'take'>
+  ): Promise<number> {
+    return this.filteredUsers(filter).length;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const user = this.users.get(id);
+    if (!user) {
+      return false;
+    }
+    this.users.delete(id);
+    this.usersByEmail.delete(user.email);
+    this.credentials.delete(id);
+    return true;
+  }
+
   async getCredential(userId: string): Promise<Credential | null> {
     const credential = this.credentials.get(userId);
     return credential ? { ...credential } : null;
+  }
+
+  async setCredential(
+    userId: string,
+    passwordHash: string,
+    at: Date
+  ): Promise<void> {
+    this.credentials.set(userId, { userId, passwordHash, updatedAt: at });
+  }
+
+  async deleteCredential(userId: string): Promise<void> {
+    this.credentials.delete(userId);
+  }
+
+  private filteredUsers(filter: Omit<UserListFilter, 'skip' | 'take'>): User[] {
+    const keyword = filter.keyword?.trim().toLowerCase();
+    const features = filter.features ?? [];
+    return [...this.users.values()]
+      .filter(user => {
+        if (
+          keyword &&
+          !user.email.toLowerCase().includes(keyword) &&
+          !user.name.toLowerCase().includes(keyword)
+        ) {
+          return false;
+        }
+        if (
+          features.length > 0 &&
+          !features.every(feature => user.features.includes(feature))
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   async createSession(session: Session): Promise<Session> {
@@ -288,6 +373,62 @@ export class MemoryStore implements MosaicStore {
       }
     }
     return result.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  async listWorkspaceIds(): Promise<string[]> {
+    return [...this.workspaces.keys()];
+  }
+
+  async listAllWorkspaces(filter: WorkspaceListFilter): Promise<Workspace[]> {
+    const skip = Math.max(0, filter.skip ?? 0);
+    const take = Math.min(100, Math.max(1, filter.take ?? 20));
+    return this.filteredWorkspaces(filter)
+      .slice(skip, skip + take)
+      .map(workspace => ({ ...workspace }));
+  }
+
+  async countAllWorkspaces(
+    filter: Omit<WorkspaceListFilter, 'skip' | 'take'>
+  ): Promise<number> {
+    return this.filteredWorkspaces(filter).length;
+  }
+
+  private filteredWorkspaces(
+    filter: Omit<WorkspaceListFilter, 'skip' | 'take'>
+  ): Workspace[] {
+    const keyword = filter.keyword?.trim().toLowerCase();
+    return [...this.workspaces.values()]
+      .filter(workspace => {
+        if (keyword && !workspace.name.toLowerCase().includes(keyword)) {
+          return false;
+        }
+        if (filter.isPublic != null && workspace.isPublic !== filter.isPublic) {
+          return false;
+        }
+        if (filter.enableAi != null && workspace.enableAi !== filter.enableAi) {
+          return false;
+        }
+        if (
+          filter.enableSharing != null &&
+          workspace.enableSharing !== filter.enableSharing
+        ) {
+          return false;
+        }
+        if (
+          filter.enableUrlPreview != null &&
+          workspace.enableUrlPreview !== filter.enableUrlPreview
+        ) {
+          return false;
+        }
+        if (
+          filter.enableDocEmbedding != null &&
+          workspace.enableDocEmbedding !== filter.enableDocEmbedding
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async deleteWorkspace(id: string): Promise<boolean> {
@@ -729,6 +870,10 @@ export class MemoryStore implements MosaicStore {
         ? { enableUrlPreview: patch.enableUrlPreview }
         : {}),
       ...(patch.enableAi !== undefined ? { enableAi: patch.enableAi } : {}),
+      ...(patch.enableDocEmbedding !== undefined
+        ? { enableDocEmbedding: patch.enableDocEmbedding }
+        : {}),
+      ...(patch.avatarKey !== undefined ? { avatarKey: patch.avatarKey } : {}),
     };
     this.workspaces.set(id, next);
     return { ...next };
@@ -860,6 +1005,10 @@ export class MemoryStore implements MosaicStore {
     return [...this.publicDocs.values()]
       .filter(doc => doc.workspaceId === workspaceId)
       .map(doc => ({ ...doc }));
+  }
+
+  async listAllPublicDocs(): Promise<PublicDoc[]> {
+    return [...this.publicDocs.values()].map(doc => ({ ...doc }));
   }
 
   async revokePublicDoc(
@@ -1064,6 +1213,9 @@ export class MemoryStore implements MosaicStore {
           ...policy,
           allowedGuestDomains: [...policy.allowedGuestDomains],
           requireSsoDomains: [...policy.requireSsoDomains],
+          ipAllowlist: [...(policy.ipAllowlist ?? [])],
+          blockPublicEditLinks: Boolean(policy.blockPublicEditLinks),
+          sessionIdleSec: policy.sessionIdleSec ?? null,
         }
       : null;
   }
@@ -1073,6 +1225,9 @@ export class MemoryStore implements MosaicStore {
       ...policy,
       allowedGuestDomains: [...policy.allowedGuestDomains],
       requireSsoDomains: [...policy.requireSsoDomains],
+      ipAllowlist: [...(policy.ipAllowlist ?? [])],
+      blockPublicEditLinks: Boolean(policy.blockPublicEditLinks),
+      sessionIdleSec: policy.sessionIdleSec ?? null,
       updatedAt: new Date(policy.updatedAt),
     };
     this.securityPolicies.set(policy.workspaceId ?? '', saved);
@@ -1151,6 +1306,213 @@ export class MemoryStore implements MosaicStore {
     }));
   }
 
+  async getSetting(key: string): Promise<unknown | null> {
+    return this.settings.has(key) ? this.settings.get(key)! : null;
+  }
+
+  async putSetting(key: string, value: unknown): Promise<void> {
+    this.settings.set(key, value);
+  }
+
+  async createNotification(
+    notification: NotificationRecord
+  ): Promise<NotificationRecord> {
+    const saved = cloneNotification(notification);
+    this.notifications.set(saved.id, saved);
+    return cloneNotification(saved);
+  }
+
+  async getNotification(id: string): Promise<NotificationRecord | null> {
+    const row = this.notifications.get(id);
+    return row ? cloneNotification(row) : null;
+  }
+
+  async listNotifications(
+    userId: string,
+    pagination?: Pagination
+  ): Promise<{
+    items: NotificationRecord[];
+    totalCount: number;
+    hasNextPage: boolean;
+  }> {
+    const all = [...this.notifications.values()]
+      .filter(item => item.userId === userId)
+      .sort(
+        (a, b) =>
+          b.createdAt.getTime() - a.createdAt.getTime() ||
+          b.id.localeCompare(a.id)
+      );
+    const cursor = pagination?.after
+      ? decodeCursor(pagination.after)
+      : undefined;
+    const offset = Math.max(0, pagination?.offset ?? 0);
+    let start = offset;
+    if (cursor) {
+      const index = all.findIndex(
+        item =>
+          item.createdAt.getTime() < cursor.at.getTime() ||
+          (item.createdAt.getTime() === cursor.at.getTime() &&
+            item.id < cursor.id)
+      );
+      start = index === -1 ? all.length : index;
+    }
+    const limit = paginationLimit(pagination, 8);
+    const slice = all.slice(start, start + limit);
+    return {
+      items: slice.map(cloneNotification),
+      totalCount: all.length,
+      hasNextPage: start + slice.length < all.length,
+    };
+  }
+
+  async markNotificationRead(
+    id: string,
+    userId: string,
+    at: Date
+  ): Promise<boolean> {
+    const row = this.notifications.get(id);
+    if (!row || row.userId !== userId) {
+      return false;
+    }
+    row.read = true;
+    row.updatedAt = at;
+    return true;
+  }
+
+  async markAllNotificationsRead(userId: string, at: Date): Promise<number> {
+    let count = 0;
+    for (const row of this.notifications.values()) {
+      if (row.userId === userId && !row.read) {
+        row.read = true;
+        row.updatedAt = at;
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  async countUnreadNotifications(userId: string): Promise<number> {
+    return [...this.notifications.values()].filter(
+      item => item.userId === userId && !item.read
+    ).length;
+  }
+
+  async getNotificationPrefs(userId: string): Promise<NotificationPrefs | null> {
+    const prefs = this.notificationPrefs.get(userId);
+    return prefs ? { ...prefs } : null;
+  }
+
+  async upsertNotificationPrefs(
+    prefs: NotificationPrefs
+  ): Promise<NotificationPrefs> {
+    this.notificationPrefs.set(prefs.userId, { ...prefs });
+    return { ...prefs };
+  }
+
+  async enqueueOutbox(email: OutboxEmail): Promise<OutboxEmail> {
+    const saved = cloneOutbox(email);
+    this.outbox.set(saved.id, saved);
+    return cloneOutbox(saved);
+  }
+
+  async getOutbox(id: string): Promise<OutboxEmail | null> {
+    const row = this.outbox.get(id);
+    return row ? cloneOutbox(row) : null;
+  }
+
+  async listOutbox(from: Date, to: Date): Promise<OutboxEmail[]> {
+    return [...this.outbox.values()]
+      .filter(
+        item =>
+          item.createdAt.getTime() >= from.getTime() &&
+          item.createdAt.getTime() <= to.getTime()
+      )
+      .map(cloneOutbox);
+  }
+
+  async listPendingOutbox(limit: number, now: Date): Promise<OutboxEmail[]> {
+    return [...this.outbox.values()]
+      .filter(
+        item => item.status === 'pending' && item.scheduledAt.getTime() <= now.getTime()
+      )
+      .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())
+      .slice(0, limit)
+      .map(cloneOutbox);
+  }
+
+  async updateOutbox(
+    id: string,
+    patch: Partial<
+      Pick<OutboxEmail, 'status' | 'attempts' | 'lastError' | 'sentAt'>
+    >
+  ): Promise<OutboxEmail> {
+    const current = this.outbox.get(id);
+    if (!current) {
+      throw new Error('outbox not found');
+    }
+    const next: OutboxEmail = { ...current, ...patch, id: current.id };
+    this.outbox.set(id, next);
+    return cloneOutbox(next);
+  }
+
+  async enqueueJob(job: JobRecord): Promise<JobRecord> {
+    const saved = cloneJob(job);
+    this.jobs.set(saved.id, saved);
+    return cloneJob(saved);
+  }
+
+  async claimDueJobs(
+    limit: number,
+    now: Date,
+    _lockUntil: Date,
+    workerId: string
+  ): Promise<JobRecord[]> {
+    const due = [...this.jobs.values()]
+      .filter(
+        job => job.status === 'pending' && job.runAt.getTime() <= now.getTime()
+      )
+      .sort((a, b) => a.runAt.getTime() - b.runAt.getTime())
+      .slice(0, limit);
+    const claimed: JobRecord[] = [];
+    for (const job of due) {
+      job.status = 'running';
+      job.lockedAt = now;
+      job.lockedBy = workerId;
+      job.attempts += 1;
+      claimed.push(cloneJob(job));
+    }
+    return claimed;
+  }
+
+  async completeJob(id: string): Promise<void> {
+    const job = this.jobs.get(id);
+    if (job) {
+      job.status = 'completed';
+      job.lockedAt = null;
+      job.lockedBy = null;
+    }
+  }
+
+  async failJob(
+    id: string,
+    error: string,
+    retryAt: Date | null
+  ): Promise<void> {
+    const job = this.jobs.get(id);
+    if (!job) {
+      return;
+    }
+    job.lastError = error;
+    job.lockedAt = null;
+    job.lockedBy = null;
+    if (retryAt) {
+      job.status = 'pending';
+      job.runAt = retryAt;
+    } else {
+      job.status = 'failed';
+    }
+  }
+
   private findSession(
     predicate: (session: Session) => boolean
   ): Session | null {
@@ -1198,5 +1560,34 @@ function paginate<T extends { createdAt: Date; id: string }>(
     items,
     totalCount: all.length,
     hasNextPage: start + items.length < all.length,
+  };
+}
+
+function cloneNotification(row: NotificationRecord): NotificationRecord {
+  return {
+    ...row,
+    body: { ...row.body },
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  };
+}
+
+function cloneOutbox(row: OutboxEmail): OutboxEmail {
+  return {
+    ...row,
+    payload: { ...row.payload },
+    createdAt: new Date(row.createdAt),
+    scheduledAt: new Date(row.scheduledAt),
+    sentAt: row.sentAt ? new Date(row.sentAt) : null,
+  };
+}
+
+function cloneJob(row: JobRecord): JobRecord {
+  return {
+    ...row,
+    payload: { ...row.payload },
+    runAt: new Date(row.runAt),
+    createdAt: new Date(row.createdAt),
+    lockedAt: row.lockedAt ? new Date(row.lockedAt) : null,
   };
 }

@@ -22,9 +22,25 @@ import type { SecurityPolicyService } from '../../application/security-policy-se
 import type { ShareService } from '../../application/share-service.js';
 import type { SsoService } from '../../application/sso-service.js';
 import type { WorkspaceService } from '../../application/workspace-service.js';
+import type { AppConfigService } from '../../application/app-config-service.js';
+import type { AdminUserService } from '../../application/admin-user-service.js';
+import type { MailService } from '../../application/mail-service.js';
+import type { NotificationService } from '../../application/notification-service.js';
+import type { OrgService } from '../../application/org-service.js';
+import type { ScimService } from '../../application/scim-service.js';
+import type { SigningKeyService } from '../../application/signing-key-service.js';
+import type { MosaicStore } from '../../domain/ports.js';
 import type { AppConfig } from '../../config/env.js';
 import { AppError, errors } from '../../domain/errors.js';
 import type { User } from '../../domain/identity.js';
+import {
+  adminResolvers,
+  adminTypeDefs,
+} from './graphql-admin.js';
+import {
+  adminConfigResolvers,
+  adminConfigTypeDefs,
+} from './graphql-admin-config.js';
 import { blobResolvers, blobTypeDefs } from './graphql-blobs.js';
 import {
   commentsResolvers,
@@ -38,6 +54,7 @@ import {
   serverConfigFeatures,
   serverConfigOauthProviders,
 } from './graphql-platform.js';
+import { notifyResolvers, notifyTypeDefs } from './graphql-notify.js';
 import { shareResolvers, shareTypeDefs } from './graphql-share.js';
 
 const graphqlRequest = new AsyncLocalStorage<FastifyRequest>();
@@ -88,7 +105,7 @@ const JSONScalar = new GraphQLScalarType({
   },
 });
 
-const typeDefs = /* GraphQL */ `
+export const coreTypeDefs = /* GraphQL */ `
   scalar DateTime
   scalar JSON
 
@@ -171,6 +188,7 @@ const typeDefs = /* GraphQL */ `
     email: String!
     emailVerified: Boolean!
     avatarUrl: String
+    disabled: Boolean
     hasPassword: Boolean
     features: [FeatureType!]!
     quota: UserQuotaType!
@@ -228,6 +246,7 @@ function gqlUser(user: User) {
     avatarUrl: user.avatarUrl,
     hasPassword: true,
     features: user.features,
+    disabled: user.disabled,
     quota: mosaicQuota(),
     quotaUsage: { storageQuota: 0 },
   };
@@ -309,6 +328,14 @@ export const graphqlPlugin = fp<{
   ai: AiGatewayService;
   audit: AuditService;
   policy: SecurityPolicyService;
+  notifications: NotificationService;
+  mail: MailService;
+  appConfig: AppConfigService;
+  adminUsers: AdminUserService;
+  orgs: OrgService;
+  scim: ScimService;
+  signingKeys: SigningKeyService;
+  store: MosaicStore;
   config: AppConfig;
 }>(
   async (app, opts) => {
@@ -345,14 +372,46 @@ export const graphqlPlugin = fp<{
       policy: opts.policy,
       requestOf: httpRequest,
     });
+    const notify = notifyResolvers({
+      auth: opts.auth,
+      notifications: opts.notifications,
+      mail: opts.mail,
+      workspaces: opts.workspaces,
+      requestOf: httpRequest,
+    });
+    const adminConfig = adminConfigResolvers({
+      auth: opts.auth,
+      appConfig: opts.appConfig,
+      mail: opts.mail,
+      requestOf: httpRequest,
+    });
+    const admin = adminResolvers({
+      auth: opts.auth,
+      users: opts.adminUsers,
+      workspaces: opts.workspaces,
+      members: opts.members,
+      shares: opts.shares,
+      store: opts.store,
+      mail: opts.mail,
+      signingKeys: opts.signingKeys,
+      orgs: opts.orgs,
+      scim: opts.scim,
+      policy: opts.policy,
+      audit: opts.audit,
+      publicUrl: opts.config.MOSAIC_PUBLIC_URL,
+      requestOf: httpRequest,
+    });
     const schema = createSchema({
       typeDefs: [
-        typeDefs,
+        coreTypeDefs,
         blobTypeDefs,
         membersTypeDefs,
         shareTypeDefs,
         commentsTypeDefs,
         platformTypeDefs,
+        notifyTypeDefs,
+        adminConfigTypeDefs,
+        adminTypeDefs,
       ],
       resolvers: {
         DateTime,
@@ -373,6 +432,8 @@ export const graphqlPlugin = fp<{
             type: 'Selfhosted',
             initialized: await opts.auth.isInitialized(),
             calendarProviders: [],
+            availableUserFeatures: ['Admin'],
+            availableUpgrade: null,
             credentialsRequirement: {
               password: {
                 minLength: opts.config.PASSWORD_MIN_LENGTH,
@@ -437,9 +498,19 @@ export const graphqlPlugin = fp<{
               throw toGraphQLError(error);
             }
           },
-          appConfig: () => {
-            app.log.info({ op: 'appConfig' }, 'compat.stub');
-            return {};
+          appConfig: async (
+            _root: unknown,
+            _args: unknown,
+            ctx: { request?: FastifyRequest }
+          ) => {
+            try {
+              const user = await opts.auth.requireUser(
+                httpRequest(ctx)?.authSession ?? null
+              );
+              return await opts.appConfig.read(user);
+            } catch (error) {
+              throw toGraphQLError(error);
+            }
           },
           user: async (_root: unknown, _args: { email: string }) => {
             throw toGraphQLError(errors.accessDenied());
@@ -461,6 +532,8 @@ export const graphqlPlugin = fp<{
           },
           ...members.Query,
           ...platform.Query,
+          ...adminConfig.Query,
+          ...admin.Query,
         },
         Mutation: {
           createWorkspace: async (
@@ -497,10 +570,22 @@ export const graphqlPlugin = fp<{
           ...share.Mutation,
           ...comments.Mutation,
           ...platform.Mutation,
+          ...notify.Mutation,
+          ...adminConfig.Mutation,
+          ...admin.Mutation,
         },
         UserType: {
+          quota: (parent: { quota?: ReturnType<typeof mosaicQuota> }) =>
+            parent.quota ?? mosaicQuota(),
+          quotaUsage: (parent: { quotaUsage?: { storageQuota: number } }) =>
+            parent.quotaUsage ?? { storageQuota: 0 },
           ...platform.UserType,
+          ...notify.UserType,
+          ...admin.UserType,
         },
+        UserImportResultType: admin.UserImportResultType,
+        AdminWorkspace: admin.AdminWorkspace,
+        ServerConfigType: admin.ServerConfigType,
         WorkspaceType: {
           ...blob.WorkspaceType,
           ...members.WorkspaceType,

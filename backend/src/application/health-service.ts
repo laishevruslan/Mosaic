@@ -5,12 +5,13 @@ import type {
   ServerInfo,
   ServerInfoPort,
 } from '../domain/health.js';
-import type { MosaicStore } from '../domain/ports.js';
+import type { MosaicStore, RedisPort } from '../domain/ports.js';
 
 export class HealthService implements ServerInfoPort, HealthPort {
   constructor(
     private readonly config: AppConfig,
-    private readonly store?: MosaicStore
+    private readonly store?: MosaicStore,
+    private readonly redis?: RedisPort | null
   ) {}
 
   getServerInfo(): ServerInfo {
@@ -36,7 +37,7 @@ export class HealthService implements ServerInfoPort, HealthPort {
     const checks: Record<string, 'up' | 'down' | 'skipped'> = {
       process: 'up',
       postgres: 'skipped',
-      redis: this.config.REDIS_URL ? 'skipped' : 'skipped',
+      redis: 'skipped',
     };
 
     if (!this.store) {
@@ -45,16 +46,28 @@ export class HealthService implements ServerInfoPort, HealthPort {
 
     if (this.store.kind === 'memory') {
       checks.postgres = 'skipped';
-      return { status: 'ok', checks };
+    } else {
+      try {
+        checks.postgres = (await this.store.ping()) ? 'up' : 'down';
+      } catch {
+        checks.postgres = 'down';
+      }
     }
 
-    try {
-      checks.postgres = (await this.store.ping()) ? 'up' : 'down';
-    } catch {
-      checks.postgres = 'down';
+    if (!this.config.REDIS_URL) {
+      checks.redis = 'skipped';
+    } else if (!this.redis) {
+      checks.redis = 'down';
+    } else {
+      try {
+        checks.redis = (await this.redis.ping()) ? 'up' : 'down';
+      } catch {
+        checks.redis = 'down';
+      }
     }
 
-    const status = checks.postgres === 'down' ? 'error' : 'ok';
+    const status =
+      checks.postgres === 'down' || checks.redis === 'down' ? 'error' : 'ok';
     return { status, checks };
   }
 }

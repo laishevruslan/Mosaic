@@ -54,6 +54,9 @@ export class DocService {
     spaceType: string,
     spaceId: string
   ): Promise<Access> {
+    if (user.disabled) {
+      throw errors.accessDenied();
+    }
     if (!isSpaceType(spaceType)) {
       throw errors.invalidSpaceType();
     }

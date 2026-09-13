@@ -1,7 +1,13 @@
 import { cn } from '@affine/admin/utils';
 import { ROUTES } from '@affine/routes';
 import { AccountIcon, SelfhostIcon } from '@blocksuite/icons/rc';
-import { BarChart3Icon, LayoutDashboardIcon } from 'lucide-react';
+import { useI18n } from '@affine/i18n';
+import {
+  BarChart3Icon,
+  LayoutDashboardIcon,
+  ScrollTextIcon,
+  ShieldCheckIcon,
+} from 'lucide-react';
 
 import { NavItem } from './nav-item';
 import { ServerVersion } from './server-version';
@@ -13,6 +19,7 @@ interface NavProps {
 }
 
 export function Nav({ isCollapsed = false }: NavProps) {
+  const t = useI18n();
   return (
     <div
       className={cn(
@@ -30,29 +37,39 @@ export function Nav({ isCollapsed = false }: NavProps) {
           <NavItem
             to={ROUTES.admin.dashboard}
             icon={<BarChart3Icon size={18} />}
-            label="Dashboard"
+            label={t.t('com.affine.admin.nav.dashboard')}
             isCollapsed={isCollapsed}
           />
         )}
         <NavItem
           to={ROUTES.admin.accounts}
           icon={<AccountIcon fontSize={20} />}
-          label="Accounts"
+          label={t.t('com.affine.admin.nav.accounts')}
           isCollapsed={isCollapsed}
         />
-        {environment.isSelfHosted ? null : (
-          <NavItem
-            to={ROUTES.admin.workspaces}
-            icon={<LayoutDashboardIcon size={18} />}
-            label="Workspaces"
-            isCollapsed={isCollapsed}
-          />
-        )}
+        <NavItem
+          to={ROUTES.admin.workspaces}
+          icon={<LayoutDashboardIcon size={18} />}
+          label={t.t('com.affine.admin.nav.workspaces')}
+          isCollapsed={isCollapsed}
+        />
+        <NavItem
+          to={ROUTES.admin.security}
+          icon={<ShieldCheckIcon size={18} />}
+          label={t.t('com.affine.admin.nav.security')}
+          isCollapsed={isCollapsed}
+        />
+        <NavItem
+          to={ROUTES.admin.audit}
+          icon={<ScrollTextIcon size={18} />}
+          label={t.t('com.affine.admin.nav.audit')}
+          isCollapsed={isCollapsed}
+        />
         <SettingsItem isCollapsed={isCollapsed} />
         <NavItem
           to={ROUTES.admin.about}
           icon={<SelfhostIcon fontSize={20} />}
-          label="About"
+          label={t.t('com.affine.admin.nav.about')}
           isCollapsed={isCollapsed}
         />
       </nav>

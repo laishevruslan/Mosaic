@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { promises as dns } from 'node:dns';
 import { existsSync } from 'node:fs';
 
 import cookie from '@fastify/cookie';
@@ -6,7 +7,9 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 
+import { AdminUserService } from './application/admin-user-service.js';
 import { AiGatewayService } from './application/ai-gateway.js';
+import { AppConfigService } from './application/app-config-service.js';
 import { AuditService } from './application/audit-service.js';
 import { AuthService, type AuthExtras } from './application/auth-service.js';
 import { BlobService } from './application/blob-service.js';
@@ -14,12 +17,18 @@ import { CommentService } from './application/comment-service.js';
 import { DocService } from './application/doc-service.js';
 import { HealthService } from './application/health-service.js';
 import { JiraService } from './application/jira-service.js';
+import { MailService } from './application/mail-service.js';
 import { MembershipService } from './application/membership-service.js';
+import { MfaService } from './application/mfa-service.js';
+import { NotificationService } from './application/notification-service.js';
+import { OrgService } from './application/org-service.js';
 import { DiscoveryOidcClient } from './application/oidc-client.js';
 import { createArgon2Hasher } from './application/password-hasher.js';
+import { ScimService } from './application/scim-service.js';
 import { SearchService } from './application/search-service.js';
 import { SecurityPolicyService } from './application/security-policy-service.js';
 import { ShareService } from './application/share-service.js';
+import { SigningKeyService } from './application/signing-key-service.js';
 import { SsoService } from './application/sso-service.js';
 import { WebhookService } from './application/webhook-service.js';
 import { WorkspaceService } from './application/workspace-service.js';
@@ -33,20 +42,33 @@ import { graphqlPlugin } from './adapters/http/graphql-plugin.js';
 import { healthRoutes } from './adapters/http/health-routes.js';
 import { infoRoutes } from './adapters/http/info-routes.js';
 import { metricsRoutes } from './adapters/http/metrics-routes.js';
+import { mfaRoutes } from './adapters/http/mfa-routes.js';
+import { scimRoutes } from './adapters/http/scim-routes.js';
 import { observabilityPlugin } from './adapters/http/observability-plugin.js';
 import { platformRoutes } from './adapters/http/platform-routes.js';
+import { securityHeadersPlugin } from './adapters/http/security-headers.js';
 import { sessionPlugin } from './adapters/http/session-plugin.js';
 import { setupRoutes } from './adapters/http/setup-routes.js';
 import { staticPlugin } from './adapters/http/static-plugin.js';
+import type { JobHandler } from './adapters/jobs/worker.js';
+import { JobWorker } from './adapters/jobs/worker.js';
+import { createMailer } from './adapters/mail/smtp.js';
 import { createLogger } from './adapters/observability/logger.js';
 import { createMetrics } from './adapters/observability/metrics.js';
 import { TracingSkeleton } from './adapters/observability/tracing.js';
 import { createStore } from './adapters/persistence/store.js';
+import { connectRedis } from './adapters/redis/client.js';
 import { socketPlugin } from './adapters/realtime/socket-plugin.js';
 import { SocketRealtimeHub } from './adapters/realtime/hub.js';
 import type { AppConfig } from './config/env.js';
+import { isSpaceType } from './domain/doc.js';
 import { errors } from './domain/errors.js';
-import type { HttpFetcher } from './domain/ports.js';
+import type {
+  DnsResolver,
+  HttpFetcher,
+  MailPort,
+  RedisPort,
+} from './domain/ports.js';
 import type { OauthProviderName } from './domain/sso.js';
 import type { AiSettings } from './application/ai-gateway.js';
 import type { JiraSettings } from './application/jira-service.js';
@@ -55,6 +77,9 @@ import type { SamlSettings } from './application/sso-service.js';
 
 export interface AppDeps {
   fetch?: HttpFetcher;
+  mailer?: MailPort;
+  redis?: RedisPort | null;
+  dns?: DnsResolver;
 }
 
 export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
@@ -63,6 +88,55 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   const store = await createStore(config);
   const clock = { now: () => new Date() };
   const hasher = createArgon2Hasher();
+
+  let redis: RedisPort | null = deps.redis ?? null;
+  if (redis === undefined || redis === null) {
+    if (deps.redis === null) {
+      redis = null;
+    } else if (config.REDIS_URL) {
+      try {
+        redis = await connectRedis(config.REDIS_URL);
+      } catch (error) {
+        if (config.NODE_ENV === 'production') {
+          logger.error({ err: error }, 'redis_connect_failed');
+        }
+        redis = null;
+      }
+    }
+  }
+
+  const jobHandlers: Record<string, JobHandler> = {};
+  const jobs = new JobWorker(store, clock, jobHandlers, {
+    pollMs: config.JOB_POLL_MS,
+    concurrency: config.JOB_CONCURRENCY,
+    inline: config.NODE_ENV === 'test',
+  });
+  const mailer =
+    deps.mailer ??
+    createMailer({
+      ...(config.SMTP_HOST ? { host: config.SMTP_HOST } : {}),
+      port: config.SMTP_PORT,
+      ...(config.SMTP_USER ? { user: config.SMTP_USER } : {}),
+      ...(config.SMTP_PASSWORD ? { password: config.SMTP_PASSWORD } : {}),
+      ...(config.SMTP_FROM ? { from: config.SMTP_FROM } : {}),
+      secure: config.smtpSecure,
+      ignoreTls: config.smtpIgnoreTls,
+      nodeEnv: config.NODE_ENV,
+    });
+  const mail = new MailService(
+    store,
+    store,
+    mailer,
+    clock,
+    jobs,
+    config.MOSAIC_PUBLIC_URL
+  );
+  const appConfig = new AppConfigService(config, store, {
+    smtpConfigured: () => mail.configured,
+    redisConfigured: Boolean(redis),
+    aiConfigured: Boolean(config.MOSAIC_AI_API_KEY),
+    blobDriver: config.BLOB_DRIVER ?? (config.NODE_ENV === 'test' ? 'memory' : 'fs'),
+  });
   const audit = new AuditService(
     store,
     clock,
@@ -70,7 +144,13 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     config.MOSAIC_SIEM_WEBHOOK_URL,
     config.AUDIT_RETENTION_DAYS
   );
-  const policy = new SecurityPolicyService(store, clock);
+  const dnsResolver: DnsResolver = deps.dns ?? {
+    resolveTxt: hostname => dns.resolveTxt(hostname),
+  };
+  const orgs = new OrgService(store, store, clock, dnsResolver, audit);
+  const policy = new SecurityPolicyService(store, clock, async domain =>
+    Boolean(await orgs.findVerifiedDomain(domain))
+  );
   const authExtras: AuthExtras = {
     audit,
     oauth: store,
@@ -92,6 +172,23 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     },
     authExtras
   );
+  const mfa = new MfaService(
+    store,
+    clock,
+    config.MOSAIC_SERVER_NAME,
+    auth,
+    orgs,
+    audit
+  );
+  authExtras.mfa = {
+    requiredForPassword: user => mfa.requiredForPassword(user),
+    createLoginChallenge: user => mfa.createLoginChallenge(user),
+    methodsFor: async user => {
+      const status = await mfa.status(user);
+      return { totp: status.totp, passkeyCount: status.passkeyCount };
+    },
+  };
+  authExtras.orgs = orgs;
   const oidcSettings: OidcSettings = {};
   if (config.MOSAIC_OIDC_ISSUER)
     oidcSettings.issuer = config.MOSAIC_OIDC_ISSUER;
@@ -111,12 +208,32 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     saml.entityId = config.MOSAIC_SAML_IDP_ENTITY_ID;
   if (config.MOSAIC_SAML_CERTIFICATE)
     saml.certificate = config.MOSAIC_SAML_CERTIFICATE;
-  const sso = new SsoService(auth, oidc, saml, config.MOSAIC_PUBLIC_URL, clock);
+  const sso = new SsoService(
+    auth,
+    oidc,
+    saml,
+    config.MOSAIC_PUBLIC_URL,
+    clock,
+    orgs
+  );
   authExtras.oauthProviders = () => sso.oauthProviders();
   const objects = createBlobObjects({
     ...(config.BLOB_DRIVER ? { driver: config.BLOB_DRIVER } : {}),
     dir: config.BLOB_DIR,
     nodeEnv: config.NODE_ENV,
+    s3: {
+      ...(config.S3_BUCKET ? { bucket: config.S3_BUCKET } : {}),
+      region: config.S3_REGION,
+      ...(config.S3_ACCESS_KEY_ID
+        ? { accessKeyId: config.S3_ACCESS_KEY_ID }
+        : {}),
+      ...(config.S3_SECRET_ACCESS_KEY
+        ? { secretAccessKey: config.S3_SECRET_ACCESS_KEY }
+        : {}),
+      ...(config.S3_ENDPOINT ? { endpoint: config.S3_ENDPOINT } : {}),
+      forcePathStyle: config.s3ForcePathStyle,
+    },
+    ...(config.GCS_BUCKET ? { gcsBucket: config.GCS_BUCKET } : {}),
   });
   const blobs = new BlobService(store, store, objects, clock, {
     maxBytes: config.BLOB_MAX_BYTES,
@@ -125,12 +242,33 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     partSize: config.BLOB_PART_SIZE,
     uploadTtlMs: config.BLOB_UPLOAD_TTL_MS,
   });
-  const workspaces = new WorkspaceService(store, clock, blobs, audit);
+  const workspaces = new WorkspaceService(store, clock, blobs, audit, orgs);
+  const scim = new ScimService(store, store, clock, orgs, auth, audit);
+  const adminUsers = new AdminUserService(store, hasher, clock, auth, {
+    passwordMin: config.PASSWORD_MIN_LENGTH,
+    passwordMax: config.PASSWORD_MAX_LENGTH,
+    audit,
+  });
+  const signingKeys = new SigningKeyService(store, clock, audit);
   const ioBox: { current: import('socket.io').Server | undefined } = {
     current: undefined,
   };
   const hub = new SocketRealtimeHub(() => ioBox.current);
-  const webhooks = new WebhookService(workspaces, store, clock, fetch, audit);
+  const notifications = new NotificationService(
+    store,
+    store,
+    store,
+    clock,
+    hub
+  );
+  const webhooks = new WebhookService(
+    workspaces,
+    store,
+    clock,
+    fetch,
+    audit,
+    jobs
+  );
   const members = new MembershipService(
     workspaces,
     store,
@@ -139,7 +277,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     clock,
     config.MOSAIC_PUBLIC_URL,
     hub,
-    { audit, policy, webhooks }
+    { audit, policy, webhooks, notifications, mail }
   );
   const shares = new ShareService(workspaces, store, store, clock, hub, {
     audit,
@@ -170,7 +308,54 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   if (config.MOSAIC_JIRA_API_TOKEN)
     jiraSettings.apiToken = config.MOSAIC_JIRA_API_TOKEN;
   const jira = new JiraService(jiraSettings, fetch);
-  const health = new HealthService(config, store);
+  const health = new HealthService(config, store, redis);
+
+  jobHandlers['mail.send'] = async payload => {
+    const outboxId = payload.outboxId;
+    if (typeof outboxId === 'string') {
+      await mail.deliver(outboxId);
+    }
+  };
+  jobHandlers['webhook.retry'] = async payload => {
+    const url = payload.url;
+    const secret = payload.secret;
+    const event = payload.event;
+    const body = payload.body;
+    if (
+      typeof url === 'string' &&
+      typeof secret === 'string' &&
+      typeof event === 'string' &&
+      typeof body === 'string'
+    ) {
+      await webhooks.retryDelivery({ url, secret, event, body });
+    }
+  };
+  jobHandlers['blob.gc'] = async () => {
+    await blobs.gcAll();
+  };
+  jobHandlers['doc.compact'] = async payload => {
+    const spaceType = payload.spaceType;
+    const spaceId = payload.spaceId;
+    const docId = payload.docId;
+    if (
+      typeof spaceType === 'string' &&
+      isSpaceType(spaceType) &&
+      typeof spaceId === 'string' &&
+      typeof docId === 'string'
+    ) {
+      await docs.compact(spaceType, spaceId, docId);
+    }
+  };
+  jobHandlers['index.document'] = async () => {
+    // Writer lands in E4; the job is recorded so the queue contract is live.
+  };
+  jobHandlers['embed.document'] = async () => {
+    // Embeddings land in E2; the job is recorded so the queue contract is live.
+  };
+  jobHandlers['audit.purge'] = async () => {
+    // Retention filter is already applied on read; partition drop is E0.
+  };
+  jobs.start();
 
   const app = Fastify({
     loggerInstance: logger,
@@ -200,6 +385,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   registerErrorHandler(app as unknown as import('fastify').FastifyInstance);
 
   await app.register(observabilityPlugin, { metrics, tracing });
+  await app.register(securityHeadersPlugin, { hsts: config.cookieSecure });
   await app.register(cookie);
   await app.register(cors, {
     origin: config.NODE_ENV === 'production' ? config.MOSAIC_PUBLIC_URL : true,
@@ -221,11 +407,13 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     maxAgeSec: Math.floor(config.SESSION_ABSOLUTE_MS / 1000),
   };
 
-  await app.register(sessionPlugin, { auth });
+  await app.register(sessionPlugin, { auth, policy });
   await app.register(infoRoutes, { health });
   await app.register(healthRoutes, { health });
   await app.register(metricsRoutes, { metrics });
   await app.register(authRoutes, { auth, cookies, sso });
+  await app.register(mfaRoutes, { auth, mfa, cookies });
+  await app.register(scimRoutes, { scim });
   await app.register(setupRoutes, { auth, cookies });
   await app.register(graphqlPlugin, {
     auth,
@@ -240,6 +428,14 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     ai,
     audit,
     policy,
+    notifications,
+    mail,
+    appConfig,
+    adminUsers,
+    orgs,
+    scim,
+    signingKeys,
+    store,
     config,
   });
   await app.register(docRoutes, { auth, docs, shares });
@@ -262,6 +458,8 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     shares,
     comments,
     blobs,
+    notifications,
+    ...(redis ? { redis } : {}),
     config,
     metrics,
   });
@@ -284,6 +482,9 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   }
 
   app.addHook('onClose', async () => {
+    await jobs.stop();
+    await tracing.close();
+    await redis?.close();
     await objects.close();
     await store.close();
   });
@@ -306,6 +507,14 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     policy,
     webhooks,
     jira,
+    notifications,
+    mail,
+    jobs,
+    appConfig,
+    orgs,
+    scim,
+    mfa,
+    adminUsers,
   };
 }
 

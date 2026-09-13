@@ -304,6 +304,6 @@ Retention: job compact updates → snapshot каждые N updates / M MB.
 6. [x] Реализовать Phase 3 (Blobs + Doc meta) в `backend/`.
 7. [x] Реализовать Phase 4 (Members, sharing, comments) в `backend/`.
 8. [x] Реализовать Phase 5 (Cutover & delete EE) в `backend/` + runtime images/compose/CI.
-9. [x] Реализовать Phase 6 (Product platform) в `backend/`. Далее — enterprise extras вне MIT wire (SCIM/MFA/admin UI) по отдельному плану.
+9. [x] Реализовать Phase 6 (Product platform) в `backend/`. Далее — enterprise extras вне MIT wire (SCIM/MFA/admin UI): `plans/mosaic_enterprise_plan.md`.
 
 После Phase 2 можно параллелить kanban/enterprise frontend, не блокируясь на EE seats.

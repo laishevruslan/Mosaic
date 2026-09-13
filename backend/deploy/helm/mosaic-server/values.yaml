@@ -1,0 +1,42 @@
+replicaCount: 2
+
+image:
+  repository: mosaic-server
+  tag: local
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3010
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+env:
+  NODE_ENV: production
+  MOSAIC_PUBLIC_URL: http://mosaic-server:3010
+  MOSAIC_PERSISTENCE: postgres
+  BLOB_DRIVER: s3
+  REDIS_URL: redis://redis:6379
+  DATABASE_URL: postgresql://mosaic:mosaic@postgres:5432/mosaic
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: mosaic-server

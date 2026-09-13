@@ -79,8 +79,24 @@ const EnvSchema = z.object({
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).default(20),
   SYNC_COMPACT_UPDATES: z.coerce.number().int().min(1).default(64),
   SYNC_MAX_UPDATE_BYTES: z.coerce.number().int().min(1024).default(1_048_576),
-  BLOB_DRIVER: z.enum(['memory', 'fs']).optional(),
+  BLOB_DRIVER: z.enum(['memory', 'fs', 's3', 'gcs']).optional(),
   BLOB_DIR: z.string().min(1).default('data/blobs'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: boolish,
+  GCS_BUCKET: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+  SMTP_SECURE: boolish,
+  SMTP_IGNORE_TLS: boolish,
+  JOB_POLL_MS: z.coerce.number().int().min(100).default(2_000),
+  JOB_CONCURRENCY: z.coerce.number().int().min(1).default(4),
   BLOB_MAX_BYTES: z.coerce
     .number()
     .int()
@@ -134,6 +150,9 @@ export type AppConfig = z.infer<typeof EnvSchema> & {
   deploymentType: 'selfhosted';
   allowSignup: boolean;
   cookieSecure: boolean;
+  s3ForcePathStyle: boolean;
+  smtpSecure: boolean;
+  smtpIgnoreTls: boolean;
 };
 
 function parseDotEnv(raw: string): Record<string, string> {
@@ -187,6 +206,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     deploymentType: 'selfhosted',
     allowSignup: parsed.MOSAIC_ALLOW_SIGNUP ?? true,
     cookieSecure: parsed.COOKIE_SECURE ?? production,
+    s3ForcePathStyle: parsed.S3_FORCE_PATH_STYLE ?? Boolean(parsed.S3_ENDPOINT),
+    smtpSecure: parsed.SMTP_SECURE ?? parsed.SMTP_PORT === 465,
+    smtpIgnoreTls: parsed.SMTP_IGNORE_TLS ?? false,
   };
 }
 

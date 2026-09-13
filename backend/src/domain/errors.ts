@@ -186,6 +186,37 @@ export const errors = {
       'AI gateway is not configured. Set MOSAIC_AI_API_KEY (BYOK).'
     ),
   webhookNotFound: () => err(404, 'NOT_FOUND', 'Webhook not found.'),
+  notificationNotFound: () =>
+    err(404, 'NOTIFICATION_NOT_FOUND', 'Notification not found.'),
+  blobDriverUnimplemented: (driver: string) =>
+    err(
+      501,
+      'ACTION_FORBIDDEN',
+      `Blob driver "${driver}" is not implemented on this Mosaic server.`
+    ),
+  userDisabled: () =>
+    err(403, 'ACTION_FORBIDDEN', 'This account is disabled.'),
+  mfaRequired: (data: Record<string, unknown>) =>
+    err(403, 'MFA_REQUIRED', 'Multi-factor authentication is required.', data),
+  mfaInvalid: () =>
+    err(400, 'WRONG_SIGN_IN_CREDENTIALS', 'Invalid authentication code.'),
+  domainNotVerified: () =>
+    err(
+      400,
+      'ACTION_FORBIDDEN',
+      'SSO enforcement requires a verified domain.'
+    ),
+  scimUnauthorized: () =>
+    err(401, 'AUTHENTICATION_REQUIRED', 'Invalid SCIM bearer token.'),
+  ipDenied: () =>
+    err(403, 'ACTION_FORBIDDEN', 'This IP address is not allowed.'),
+  publicEditLinksBlocked: () =>
+    err(
+      403,
+      'ACTION_FORBIDDEN',
+      'Public edit links are disabled for this workspace.'
+    ),
+  orgNotFound: () => err(404, 'NOT_FOUND', 'Organization not found.'),
   jiraNotConfigured: () =>
     err(
       501,

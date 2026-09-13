@@ -1,3 +1,4 @@
+import { createAdapter } from '@socket.io/redis-adapter';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { Server, type Socket } from 'socket.io';
@@ -7,11 +8,13 @@ import type { BlobService } from '../../application/blob-service.js';
 import type { CommentService } from '../../application/comment-service.js';
 import type { DocService } from '../../application/doc-service.js';
 import type { MembershipService } from '../../application/membership-service.js';
+import type { NotificationService } from '../../application/notification-service.js';
 import type { ShareService } from '../../application/share-service.js';
 import type { AppConfig } from '../../config/env.js';
 import type { DocLifecycle } from '../../domain/doc.js';
 import { AppError, errors } from '../../domain/errors.js';
 import type { User } from '../../domain/identity.js';
+import type { RedisPort } from '../../domain/ports.js';
 import type { HttpMetrics } from '../observability/metrics.js';
 import { COOKIE_SESSION, parseCookieHeader } from '../http/cookies.js';
 import {
@@ -138,6 +141,8 @@ export const socketPlugin = fp<{
   shares: ShareService;
   comments: CommentService;
   blobs: BlobService;
+  notifications: NotificationService;
+  redis?: RedisPort | null;
   config: AppConfig;
   metrics: HttpMetrics;
 }>(
@@ -155,6 +160,16 @@ export const socketPlugin = fp<{
       pingTimeout: 25_000,
       pingInterval: 20_000,
     });
+
+    if (opts.redis) {
+      const sub = await opts.redis.duplicate();
+      io.adapter(
+        createAdapter(opts.redis.raw() as never, sub.raw() as never)
+      );
+      app.addHook('onClose', async () => {
+        await sub.close();
+      });
+    }
 
     io.use(async (socket, next) => {
       try {
@@ -213,6 +228,7 @@ function bindSocket(
     shares: ShareService;
     comments: CommentService;
     blobs: BlobService;
+    notifications: NotificationService;
     config: AppConfig;
     metrics: HttpMetrics;
   }
@@ -221,6 +237,11 @@ function bindSocket(
 
   const handle = async <T>(ack: Ack<T> | undefined, run: () => Promise<T>) => {
     try {
+      const fresh = await opts.auth.getUserById(socket.data.user.id);
+      if (!fresh || fresh.disabled) {
+        throw errors.accessDenied();
+      }
+      socket.data.user = fresh;
       const data = await run();
       ack?.(ackData(data));
     } catch (error) {
@@ -486,6 +507,7 @@ function bindSocket(
           shares: opts.shares,
           comments: opts.comments,
           blobs: opts.blobs,
+          notifications: opts.notifications,
         });
       });
     }

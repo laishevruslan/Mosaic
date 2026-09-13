@@ -34,6 +34,8 @@ export interface WorkspacePatch {
   enableSharing?: boolean;
   enableUrlPreview?: boolean;
   enableAi?: boolean;
+  enableDocEmbedding?: boolean;
+  avatarKey?: string | null;
 }
 
 export const INVITE_LINK_TTL_MS: Record<InviteLinkExpireTime, number> = {

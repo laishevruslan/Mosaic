@@ -1,7 +1,10 @@
 import { errors } from '../domain/errors.js';
+import { emailDomain } from '../domain/security.js';
+import { isOrgRole, type OrgRole } from '../domain/org.js';
 import type { Clock } from '../domain/ports.js';
 import type { OidcClient, SsoProfile } from '../domain/sso.js';
 import type { AuthService, SignInResult } from './auth-service.js';
+import type { OrgService } from './org-service.js';
 import {
   buildAuthnRequest,
   decodeSamlResponse,
@@ -30,7 +33,8 @@ export class SsoService {
     private readonly oidc: OidcClient,
     private readonly saml: SamlSettings,
     private readonly publicUrl: string,
-    private readonly clock: Clock
+    private readonly clock: Clock,
+    private readonly orgs?: OrgService
   ) {}
 
   oauthProviders(): string[] {
@@ -152,7 +156,43 @@ export class SsoService {
     if (!profile.email.includes('@')) {
       throw errors.invalidEmail();
     }
-    return this.auth.completeSso(profile, clientKind);
+    const org = await this.orgs?.default();
+    const domain = emailDomain(profile.email);
+    const verified = org
+      ? await this.orgs?.findVerifiedDomain(domain)
+      : null;
+    const createIfMissing = org?.jitEnabled !== false;
+    const result = await this.auth.completeSso(profile, clientKind, {
+      createIfMissing,
+    });
+    if (org) {
+      const idp = await this.orgs?.getIdp(org.id);
+      const mapped = this.mapGroups(profile.groups, idp?.groupRoleMap ?? {});
+      await this.orgs?.addMember(org.id, result.user.id, mapped);
+    }
+    void verified;
+    return result;
+  }
+
+  private mapGroups(
+    groups: string[],
+    roleMap: Record<string, string>
+  ): OrgRole {
+    let role: OrgRole = 'member';
+    for (const group of groups) {
+      const mapped = roleMap[group] ?? roleMap[group.toLowerCase()];
+      if (mapped && isOrgRole(mapped)) {
+        if (mapped === 'owner') {
+          return 'owner';
+        }
+        if (mapped === 'admin') {
+          role = 'admin';
+        }
+      } else if (/admin/i.test(group)) {
+        role = 'admin';
+      }
+    }
+    return role;
   }
 
   private takeState(state: string): PendingState {

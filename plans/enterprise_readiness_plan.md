@@ -1,5 +1,7 @@
 # План: enterprise-уровень доски (gap-анализ конкурентов + дорожная карта)
 
+> **Актуализация 2026-09-12.** Этот файл — исторический gap-анализ эпохи EE Nest (`packages/backend/server`). Clean-room сервер выполнен (`plans/clean_room_backend_plan.md`). Рабочий backlog и дорожная карта: **`plans/mosaic_enterprise_plan.md`**.
+
 Этот документ — продолжение `plans/miro_whiteboard_implementation_plan.md`. Тот план закрывает **canvas/widgets** (chart, kanban, sketch, LOD, presence) — и, судя по коду, большая часть §6 там реально сделана. Этот документ разбирает другую ось: **чего не хватает, чтобы продукт продавался и работал как enterprise-инструмент** (SSO/SCIM, audit, DLP, facilitation, интеграции, AI-генерация, accessibility, мобильный офлайн) — по образцу Miro Enterprise Guard, Mural Enterprise, Figma/FigJam Enterprise, Lucid Enterprise Shield, Confluence Whiteboards.
 
 **Метод.** Разобрано двумя параллельными потоками: (1) публичная документация конкурентов (Help Center / Trust Center / Developer Docs, актуальная на сентябрь 2026), (2) инвентаризация текущего кода `packages/backend/server`, `packages/frontend/admin`, `packages/frontend/core`, `packages/frontend/whiteboard`.

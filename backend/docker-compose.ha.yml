@@ -1,0 +1,11 @@
+name: mosaic-server-ha
+
+# Two Mosaic replicas sharing one Redis (Socket.IO adapter) and Postgres.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.ha.yml up --build
+
+services:
+  mosaic:
+    deploy:
+      replicas: 2
+    environment:
+      REDIS_URL: redis://redis:6379

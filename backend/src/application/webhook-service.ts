@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
+import type { JobWorker } from '../adapters/jobs/worker.js';
 import type { AuditService } from './audit-service.js';
 import { hmacSha256 } from './oidc-client.js';
 import type { WorkspaceWebhook, WebhookDelivery } from '../domain/webhook.js';
@@ -14,7 +15,8 @@ export class WebhookService {
     private readonly store: WebhookStore,
     private readonly clock: Clock,
     private readonly fetch: HttpFetcher = globalThis.fetch,
-    private readonly audit?: AuditService
+    private readonly audit?: AuditService,
+    private readonly jobs?: JobWorker
   ) {}
 
   async create(
@@ -108,7 +110,7 @@ export class WebhookService {
       hooks.map(async hook => {
         const signature = hmacSha256(hook.secret, body);
         try {
-          await this.fetch(hook.url, {
+          const response = await this.fetch(hook.url, {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
@@ -117,8 +119,27 @@ export class WebhookService {
             },
             body,
           });
-        } catch {
-          // Delivery failures are best-effort.
+          if (!response.ok) {
+            throw new Error(`Webhook HTTP ${response.status}`);
+          }
+        } catch (error) {
+          await this.jobs?.enqueue('webhook.retry', {
+            url: hook.url,
+            secret: hook.secret,
+            event,
+            body,
+            attempt: 1,
+          });
+          await this.audit?.record({
+            workspaceId,
+            action: 'webhook.deliver_failed',
+            targetType: 'webhook',
+            targetId: hook.id,
+            metadata: {
+              event,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
         }
       })
     );
@@ -128,6 +149,28 @@ export class WebhookService {
       targetType: 'webhook',
       metadata: { event, hooks: hooks.length },
     });
+  }
+
+  async retryDelivery(input: {
+    url: string;
+    secret: string;
+    event: string;
+    body: string;
+    attempt?: number;
+  }): Promise<void> {
+    const signature = hmacSha256(input.secret, input.body);
+    const response = await this.fetch(input.url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-mosaic-signature': `sha256=${signature}`,
+        'x-mosaic-event': input.event,
+      },
+      body: input.body,
+    });
+    if (!response.ok) {
+      throw new Error(`Webhook HTTP ${response.status}`);
+    }
   }
 
   verifySignature(

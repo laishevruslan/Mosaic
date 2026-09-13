@@ -7,6 +7,7 @@ export interface User {
   emailVerified: boolean;
   avatarUrl: string | null;
   features: UserFeature[];
+  disabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +53,9 @@ export interface Workspace {
   enableSharing: boolean;
   enableUrlPreview: boolean;
   enableAi: boolean;
+  enableDocEmbedding: boolean;
+  avatarKey: string | null;
+  orgId: string | null;
   createdAt: Date;
   createdBy: string | null;
 }
@@ -70,4 +74,23 @@ export interface NewUserInput {
   name: string;
   emailVerified: boolean;
   features: UserFeature[];
+  disabled?: boolean;
+}
+
+export interface UserListFilter {
+  keyword?: string | null;
+  features?: UserFeature[];
+  skip?: number;
+  take?: number;
+}
+
+export interface WorkspaceListFilter {
+  keyword?: string | null;
+  skip?: number;
+  take?: number;
+  isPublic?: boolean | null;
+  enableAi?: boolean | null;
+  enableSharing?: boolean | null;
+  enableUrlPreview?: boolean | null;
+  enableDocEmbedding?: boolean | null;
 }

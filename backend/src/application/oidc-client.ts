@@ -198,10 +198,28 @@ export class DiscoveryOidcClient implements OidcClient {
       providerAccountId: sub,
       email,
       name,
+      groups: groupsOf(raw),
     };
   }
 }
 
 export function hmacSha256(secret: string, body: string): string {
   return createHmac('sha256', secret).update(body).digest('hex');
+}
+
+function groupsOf(raw: Record<string, unknown>): string[] {
+  const candidates = [raw.groups, raw.roles, raw['cognito:groups']];
+  const out: string[] = [];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) {
+        if (typeof item === 'string' && item.trim()) {
+          out.push(item.trim());
+        }
+      }
+    } else if (typeof candidate === 'string' && candidate.trim()) {
+      out.push(...candidate.split(',').map(item => item.trim()).filter(Boolean));
+    }
+  }
+  return out;
 }

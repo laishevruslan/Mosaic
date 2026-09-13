@@ -2,6 +2,7 @@ import type { AuthService } from '../../application/auth-service.js';
 import type { BlobService } from '../../application/blob-service.js';
 import type { CommentService } from '../../application/comment-service.js';
 import type { MembershipService } from '../../application/membership-service.js';
+import type { NotificationService } from '../../application/notification-service.js';
 import type { ShareService } from '../../application/share-service.js';
 import { errors } from '../../domain/errors.js';
 import type { User } from '../../domain/identity.js';
@@ -14,6 +15,7 @@ export interface RealtimeServices {
   shares: ShareService;
   comments: CommentService;
   blobs: BlobService;
+  notifications: NotificationService;
 }
 
 export const REALTIME_TOPICS = new Set([
@@ -143,16 +145,20 @@ export async function handleRealtimeRequest(
           features: user.features,
         },
       };
-    case 'user.settings.get':
+    case 'user.settings.get': {
+      const settings = await services.notifications.prefs(user);
       return {
         settings: {
-          receiveInvitationEmail: false,
-          receiveMentionEmail: false,
-          receiveCommentEmail: false,
+          receiveInvitationEmail: settings.receiveInvitationEmail,
+          receiveMentionEmail: settings.receiveMentionEmail,
+          receiveCommentEmail: settings.receiveCommentEmail,
         },
       };
+    }
     case 'notification.count.get':
-      return { count: 0 };
+      return {
+        count: await services.notifications.unreadCount(user),
+      };
     case 'doc.grants.get': {
       stringArg(input, 'workspaceId');
       stringArg(input, 'docId');

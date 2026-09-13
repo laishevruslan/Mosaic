@@ -1,6 +1,7 @@
 import type { BlobObjectStore } from '../../domain/ports.js';
 
 export class MemoryBlobObjects implements BlobObjectStore {
+  readonly driver = 'memory' as const;
   private readonly objects = new Map<string, Uint8Array>();
 
   async put(objectKey: string, bytes: Uint8Array): Promise<void> {

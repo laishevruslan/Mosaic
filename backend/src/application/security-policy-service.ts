@@ -5,11 +5,13 @@ import {
   type SecurityPolicy,
 } from '../domain/security.js';
 import type { Clock, SecurityPolicyStore } from '../domain/ports.js';
+import { ipAllowed } from './cidr.js';
 
 export class SecurityPolicyService {
   constructor(
     private readonly store: SecurityPolicyStore,
-    private readonly clock: Clock
+    private readonly clock: Clock,
+    private readonly verifiedDomain?: (domain: string) => Promise<boolean>
   ) {}
 
   async get(workspaceId: string | null): Promise<SecurityPolicy> {
@@ -33,9 +35,12 @@ export class SecurityPolicyService {
         SecurityPolicy,
         | 'allowedGuestDomains'
         | 'blockPublicLinks'
+        | 'blockPublicEditLinks'
         | 'requireSso'
         | 'requireSsoDomains'
         | 'sessionMaxDurationSec'
+        | 'sessionIdleSec'
+        | 'ipAllowlist'
       >
     >
   ): Promise<SecurityPolicy> {
@@ -78,8 +83,30 @@ export class SecurityPolicyService {
     }
     const domain = emailDomain(email);
     const claimed = policy.requireSsoDomains.map(item => item.toLowerCase());
-    if (policy.requireSso || claimed.includes(domain)) {
-      throw errors.ssoRequired();
+    const domainEnforced = claimed.includes(domain);
+    if (!policy.requireSso && !domainEnforced) {
+      return;
+    }
+    const verified = this.verifiedDomain
+      ? await this.verifiedDomain(domain)
+      : true;
+    if (!verified) {
+      return;
+    }
+    throw errors.ssoRequired();
+  }
+
+  async assertPublicEditLinksAllowed(workspaceId: string): Promise<void> {
+    const policy = await this.get(workspaceId);
+    if (policy.blockPublicEditLinks) {
+      throw errors.publicEditLinksBlocked();
+    }
+  }
+
+  async assertClientIp(ip: string): Promise<void> {
+    const policy = await this.get(null);
+    if (!ipAllowed(ip, policy.ipAllowlist)) {
+      throw errors.ipDenied();
     }
   }
 }

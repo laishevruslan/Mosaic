@@ -382,17 +382,33 @@ export class BlobService {
 
   async releaseDeleted(user: User, workspaceId: string): Promise<boolean> {
     await this.authorize(user, workspaceId);
+    await this.gcWorkspace(workspaceId);
+    return true;
+  }
+
+  async gcAll(): Promise<number> {
+    const ids = await this.workspaces.listWorkspaceIds();
+    let count = 0;
+    for (const id of ids) {
+      count += await this.gcWorkspace(id);
+    }
+    return count;
+  }
+
+  private async gcWorkspace(workspaceId: string): Promise<number> {
     const all = await this.blobs.listBlobs(workspaceId, {
       includeDeleted: true,
     });
+    let count = 0;
     for (const blob of all) {
       if (!blob.deletedAt) {
         continue;
       }
       await this.objects.delete(objectKey(workspaceId, blob.key));
       await this.blobs.deleteBlob(workspaceId, blob.key);
+      count += 1;
     }
-    return true;
+    return count;
   }
 
   async purgeWorkspace(workspaceId: string): Promise<void> {

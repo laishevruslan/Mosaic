@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mosaic-server
+description: Draft Helm chart for Mosaic Server (E-Plat). Postgres/Redis/MinIO are expected as external services or subcharts you already run.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -107,6 +107,12 @@ export function parseSamlAssertion(
     providerAccountId: nameId ?? email,
     email,
     name,
+    groups: attributeValues(
+      source,
+      'groups',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/groups',
+      'http://schemas.xmlsoap.org/claims/Group'
+    ),
   };
 }
 
@@ -123,14 +129,35 @@ function firstTag(xml: string, localName: string): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function attributeValues(xml: string, ...names: string[]): string[] {
+  const values: string[] = [];
+  for (const name of names) {
+    const escaped = name.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const named = new RegExp(
+      `<(?:[\\w]+:)?Attribute[^>]*Name="${escaped}"[^>]*>([\\s\\S]*?)</(?:[\\w]+:)?Attribute>`,
+      'gi'
+    );
+    let match = named.exec(xml);
+    while (match) {
+      const inner = match[1] ?? '';
+      const valueRe =
+        /<(?:[\w]+:)?AttributeValue[^>]*>([^<]*)<\//gi;
+      let innerMatch = valueRe.exec(inner);
+      while (innerMatch) {
+        const value = innerMatch[1]?.trim();
+        if (value) {
+          values.push(value);
+        }
+        innerMatch = valueRe.exec(inner);
+      }
+      match = named.exec(xml);
+    }
+  }
+  return values;
+}
+
 function attributeValue(xml: string, name: string): string | null {
-  const escaped = name.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const named = new RegExp(
-    `<(?:[\\w]+:)?Attribute[^>]*Name="${escaped}"[^>]*>\\s*<(?:[\\w]+:)?AttributeValue[^>]*>([^<]*)</`,
-    'i'
-  );
-  const match = xml.match(named);
-  return match?.[1]?.trim() || null;
+  return attributeValues(xml, name)[0] ?? null;
 }
 
 function escapeXml(value: string): string {

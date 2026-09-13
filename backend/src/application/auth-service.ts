@@ -73,6 +73,17 @@ export interface AuthExtras {
   oauth?: OauthAccountStore;
   policy?: SecurityPolicyService;
   oauthProviders?: () => string[];
+  mfa?: {
+    requiredForPassword(user: User): Promise<boolean>;
+    createLoginChallenge(user: User): Promise<{
+      mfaToken: string;
+      methods: string[];
+    }>;
+    methodsFor(user: User): Promise<{ totp: boolean; passkeyCount: number }>;
+  };
+  orgs?: {
+    ensureDefault(user: User): Promise<unknown>;
+  };
 }
 
 export class AuthService {
@@ -96,15 +107,21 @@ export class AuthService {
     const credential = user ? await this.store.getCredential(user.id) : null;
     const providers = this.extras.oauthProviders?.() ?? [];
     const passwordAvailable = user
-      ? credential !== null
+      ? credential !== null && !user.disabled
       : this.config.allowSignup;
+    const passkeyCount = user
+      ? ((await this.extras.mfa?.methodsFor(user))?.passkeyCount ?? 0)
+      : 0;
     return {
       registered: user !== null,
       methods: {
         password: { available: passwordAvailable },
         magicLink: { available: false },
         oauth: { available: providers.length > 0, providers },
-        passkey: { available: false, discoverable: false },
+        passkey: {
+          available: passkeyCount > 0,
+          discoverable: passkeyCount > 0,
+        },
       },
     };
   }
@@ -169,6 +186,12 @@ export class AuthService {
       });
       throw errors.wrongCredentials();
     }
+    this.assertActive(existing);
+    const mfa = this.extras.mfa;
+    if (mfa && (await mfa.requiredForPassword(existing))) {
+      const challenge = await mfa.createLoginChallenge(existing);
+      throw errors.mfaRequired(challenge);
+    }
     const signed = await this.issueSession(
       existing,
       input.clientKind,
@@ -205,6 +228,7 @@ export class AuthService {
       name,
       ['Admin']
     );
+    await this.extras.orgs?.ensureDefault(user);
     return this.issueSession(user, input.clientKind, null);
   }
 
@@ -253,6 +277,7 @@ export class AuthService {
     if (!user) {
       throw errors.authenticationRequired();
     }
+    this.assertActive(user);
     return user;
   }
 
@@ -260,7 +285,11 @@ export class AuthService {
     if (!session) {
       return null;
     }
-    return this.store.findUserById(session.userId);
+    const user = await this.store.findUserById(session.userId);
+    if (!user || user.disabled) {
+      return null;
+    }
+    return user;
   }
 
   async getUserById(id: string): Promise<User | null> {
@@ -272,10 +301,14 @@ export class AuthService {
     const providers = this.extras.oauth
       ? await this.extras.oauth.listOauthProviders(user.id)
       : [];
+    const passkeys = await this.extras.mfa?.methodsFor(user);
     return {
       password: { bound: credential !== null },
       oauth: { bound: providers.length > 0, providers },
-      passkey: { bound: false, count: 0 },
+      passkey: {
+        bound: Boolean(passkeys && passkeys.passkeyCount > 0),
+        count: passkeys?.passkeyCount ?? 0,
+      },
     };
   }
 
@@ -291,7 +324,8 @@ export class AuthService {
 
   async completeSso(
     profile: SsoProfile,
-    clientKind: 'web' | 'native'
+    clientKind: 'web' | 'native',
+    opts?: { createIfMissing?: boolean }
   ): Promise<SignInResult> {
     const email = normalizeEmail(profile.email);
     if (!isValidEmail(email)) {
@@ -307,6 +341,9 @@ export class AuthService {
       ? await this.store.findUserById(linked.userId)
       : await this.store.findUserByEmail(email);
     if (!user) {
+      if (opts?.createIfMissing === false) {
+        throw errors.signUpForbidden();
+      }
       const now = this.clock.now();
       const isFirst = (await this.store.countUsers()) === 0;
       user = await this.store.createUser(
@@ -317,12 +354,17 @@ export class AuthService {
           emailVerified: true,
           avatarUrl: null,
           features: isFirst ? ['Admin'] : [],
+          disabled: false,
           createdAt: now,
           updatedAt: now,
         },
         null
       );
+      if (isFirst) {
+        await this.extras.orgs?.ensureDefault(user);
+      }
     }
+    this.assertActive(user);
     if (this.extras.oauth && !linked) {
       await this.extras.oauth.linkOauthAccount({
         id: crypto.randomUUID(),
@@ -446,6 +488,25 @@ export class AuthService {
     }
   }
 
+  async revokeAllSessionsForUser(userId: string): Promise<number> {
+    return this.store.revokeAllSessions(userId, this.clock.now());
+  }
+
+  async issueSessionFor(
+    user: User,
+    clientKind: 'web' | 'native',
+    appVersion?: string | null
+  ): Promise<SignInResult> {
+    this.assertActive(user);
+    return this.issueSession(user, clientKind, appVersion ?? null);
+  }
+
+  private assertActive(user: User): void {
+    if (user.disabled) {
+      throw errors.userDisabled();
+    }
+  }
+
   private async register(
     email: string,
     password: string,
@@ -464,11 +525,16 @@ export class AuthService {
       emailVerified: true,
       avatarUrl: null,
       features: features ?? (isFirst ? ['Admin'] : []),
+      disabled: false,
       createdAt: now,
       updatedAt: now,
     };
     const passwordHash = await this.hasher.hash(password);
-    return this.store.createUser(user, passwordHash);
+    const created = await this.store.createUser(user, passwordHash);
+    if (isFirst || (features ?? []).includes('Admin')) {
+      await this.extras.orgs?.ensureDefault(created);
+    }
+    return created;
   }
 
   private async issueSession(
@@ -484,6 +550,9 @@ export class AuthService {
       const cap = policy.sessionMaxDurationSec * 1000;
       absoluteMs = Math.min(absoluteMs, cap);
       idleMs = Math.min(idleMs, cap);
+    }
+    if (policy?.sessionIdleSec && policy.sessionIdleSec > 0) {
+      idleMs = Math.min(idleMs, policy.sessionIdleSec * 1000);
     }
     const cookieToken = randomToken();
     const csrfToken = randomToken(24);
@@ -558,6 +627,10 @@ export class AuthService {
 
   private async liveSession(session: Session | null): Promise<Session | null> {
     if (!session || session.revokedAt) {
+      return null;
+    }
+    const owner = await this.store.findUserById(session.userId);
+    if (!owner || owner.disabled) {
       return null;
     }
     const now = this.clock.now();

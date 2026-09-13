@@ -163,18 +163,24 @@ export const platformTypeDefs = /* GraphQL */ `
     workspaceId: String
     allowedGuestDomains: [String!]!
     blockPublicLinks: Boolean!
+    blockPublicEditLinks: Boolean!
     requireSso: Boolean!
     requireSsoDomains: [String!]!
     sessionMaxDurationSec: Int
+    sessionIdleSec: Int
+    ipAllowlist: [String!]!
     updatedAt: DateTime!
   }
 
   input SecurityPolicyInput {
     allowedGuestDomains: [String!]
     blockPublicLinks: Boolean
+    blockPublicEditLinks: Boolean
     requireSso: Boolean
     requireSsoDomains: [String!]
     sessionMaxDurationSec: Int
+    sessionIdleSec: Int
+    ipAllowlist: [String!]
   }
 
   input CreateChatSessionInput {
@@ -227,9 +233,12 @@ function gqlPolicy(policy: SecurityPolicy) {
     workspaceId: policy.workspaceId,
     allowedGuestDomains: policy.allowedGuestDomains,
     blockPublicLinks: policy.blockPublicLinks,
+    blockPublicEditLinks: policy.blockPublicEditLinks,
     requireSso: policy.requireSso,
     requireSsoDomains: policy.requireSsoDomains,
     sessionMaxDurationSec: policy.sessionMaxDurationSec,
+    sessionIdleSec: policy.sessionIdleSec,
+    ipAllowlist: policy.ipAllowlist,
     updatedAt: policy.updatedAt,
   };
 }
@@ -511,9 +520,12 @@ export function platformResolvers(opts: PlatformGraphqlOpts) {
               SecurityPolicy,
               | 'allowedGuestDomains'
               | 'blockPublicLinks'
+              | 'blockPublicEditLinks'
               | 'requireSso'
               | 'requireSsoDomains'
               | 'sessionMaxDurationSec'
+              | 'sessionIdleSec'
+              | 'ipAllowlist'
             >
           >;
         },
@@ -543,9 +555,12 @@ export function platformResolvers(opts: PlatformGraphqlOpts) {
               SecurityPolicy,
               | 'allowedGuestDomains'
               | 'blockPublicLinks'
+              | 'blockPublicEditLinks'
               | 'requireSso'
               | 'requireSsoDomains'
               | 'sessionMaxDurationSec'
+              | 'sessionIdleSec'
+              | 'ipAllowlist'
             >
           >;
         },

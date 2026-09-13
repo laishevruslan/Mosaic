@@ -1,11 +1,11 @@
 surface,kind,name,client_source,mvp,status,phase,notes
 REST,GET,/info,compose healthcheck + ops,yes,done,0,JSON documented in compat.md
 REST,GET,/health/live,k8s/compose,yes,done,0,process liveness
-REST,GET,/health/ready,k8s/compose,yes,done,0,memory=skipped postgres; ping when MOSAIC_PERSISTENCE=postgres
+REST,GET,/health/ready,k8s/compose,yes,done,0,memory=skipped postgres; ping Postgres when enabled; ping Redis when REDIS_URL set
 REST,GET,/metrics,ops,yes,done,0,Prometheus; sync_* placeholders
 GraphQL,query,serverConfig,packages/common/graphql/src/graphql/server-config.gql,yes,done,1,version is MOSAIC_COMPAT_VERSION (>= 0.27.0)
 GraphQL,query,oauthProviders,packages/common/graphql/src/graphql/get-oauth-providers.gql,yes,done,6,serverConfig.oauthProviders=OAuthProviderType[]; OAuth feature when OIDC configured
-GraphQL,query,appConfig,packages/common/graphql/src/graphql/admin/config.gql,yes,stub,1,admin; safe {}
+GraphQL,query,appConfig,packages/common/graphql/src/graphql/admin/config.gql,yes,done,eplat,Mosaic read-model; secrets write-only/env
 GraphQL,query,getCurrentUser,packages/common/graphql/src/graphql/get-current-user.gql,yes,done,1,null when logged out
 GraphQL,query,getWorkspaces,packages/common/graphql/src/graphql/get-workspaces.gql,yes,done,1,empty list when logged out
 GraphQL,mutation,createWorkspace,packages/common/graphql/src/graphql/create-workspace.gql,yes,done,1,auth required; owner membership
@@ -44,7 +44,7 @@ GraphQL,query,getLicense,packages/common/graphql/src/graphql/license/get-license
 GraphQL,query,calendarEvents,packages/common/graphql/src/graphql/calendar/calendar-events.gql,no,stub,6,
 GraphQL,query,listComments,packages/common/graphql/src/graphql/comment-list.gql,optional,done,4,ServerFeature.Comment advertised; CRUD + replies
 GraphQL,mutation,createComment,packages/common/graphql/src/graphql/comment-create.gql,optional,done,4,
-GraphQL,query,listNotifications,packages/common/graphql/src/graphql/list-notifications.gql,optional,stub,6,empty
+GraphQL,query,listNotifications,packages/common/graphql/src/graphql/list-notifications.gql,optional,done,eplat,persist + GraphQL; invite/mention
 REST,GET,/api/auth/session,packages/frontend/core/src/modules/cloud/stores/auth.ts,yes,done,1,{ user: null } logged out
 REST,GET,/api/auth/methods,packages/frontend/core/src/modules/cloud/stores/auth.ts,yes,done,1,
 REST,POST,/api/auth/preflight,packages/frontend/core/src/modules/cloud/stores/auth.ts,yes,done,1,zod schema in client

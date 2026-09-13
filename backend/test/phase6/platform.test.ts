@@ -840,19 +840,19 @@ describe('Phase 6 — Product platform', () => {
     expect((pushed.json() as { key: string }).key).toBe('MOS-2');
   });
 
-  it('denies password login when instance policy requires SSO', async () => {
+  it('allows password login for unverified domains even when SSO is requested', async () => {
     const { app } = await startTestApp();
     const owner = await signIn(app, 'owner@example.com');
     await gql(app, INSTANCE_POLICY, {
       cookies: owner.cookies,
       variables: { input: { requireSso: true } },
     });
-    const denied = await app.inject({
+    const stillAllowed = await app.inject({
       method: 'POST',
       url: '/api/auth/sign-in',
       headers: { 'content-type': 'application/json' },
       payload: { email: 'owner@example.com', password: 'correcthorse' },
     });
-    expect(denied.statusCode).toBe(403);
+    expect(stillAllowed.statusCode).toBe(200);
   });
 });
