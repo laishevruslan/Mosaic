@@ -6,6 +6,7 @@ import {
 import { DblClickAddEdgelessText } from './dblclick-add-edgeless-text';
 import { effects } from './effects';
 import { TextElementRendererExtension } from './element-renderer';
+import { TextDomRendererExtension } from './element-renderer/text-dom';
 import { TextElementView, TextInteraction } from './element-view';
 import { TextTool } from './tool';
 import { textToolbarExtension } from './toolbar';
@@ -22,6 +23,7 @@ export class TextViewExtension extends ViewExtensionProvider {
     super.setup(context);
     context.register(TextElementView);
     context.register(TextElementRendererExtension);
+    context.register(TextDomRendererExtension);
     if (this.isEdgeless(context.scope)) {
       context.register(TextTool);
       context.register(textToolbarExtension);

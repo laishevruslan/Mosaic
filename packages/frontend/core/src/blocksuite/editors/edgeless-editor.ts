@@ -92,7 +92,7 @@ export class EdgelessEditor extends SignalWatcher(
     super.willUpdate(changedProperties);
     if (
       this.hasUpdated && // skip the first update
-      (changedProperties.has('doc') || changedProperties.has('specs'))
+      changedProperties.has('doc')
     ) {
       this.bindStd();
     }

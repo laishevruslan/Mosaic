@@ -91,4 +91,6 @@ export const TextElementRendererExtension = ElementRendererExtension(
   text
 );
 
+export { TextDomRendererExtension, textDomRenderer } from './text-dom.js';
+
 export * from './utils';

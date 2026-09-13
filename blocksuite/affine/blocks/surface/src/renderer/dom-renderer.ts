@@ -28,6 +28,8 @@ import { DomElementRendererIdentifier } from './dom-elements/index.js';
 import type { Overlay } from './overlay.js';
 import { resolveSurfacePlaceholderColor } from './placeholder-style.js';
 
+const missingDomRenderers = new Set<string>();
+
 type EnvProvider = {
   generateColorProperty: (color: Color, fallback?: Color) => string;
   getColorScheme: () => ColorScheme;
@@ -317,7 +319,8 @@ export class DomRenderer {
 
     if (renderFn) {
       renderFn(elementModel, domElement, this);
-    } else {
+    } else if (!missingDomRenderers.has(elementModel.type)) {
+      missingDomRenderers.add(elementModel.type);
       // If no specific renderer is found (e.g., for 'shape' if the extension isn't registered,
       // or for other element types without a dedicated DOM renderer),
       // no specific DOM styling will be applied here by _renderElement.

@@ -97,7 +97,6 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
     this.mount =
       document.querySelector('.affine-edgeless-viewport') ?? this.std.host;
     this.mount.append(this.canvas);
-    this.backend = createL0Backend(this.canvas);
 
     const attachPointer = (element: EventTarget) => {
       element.addEventListener('pointerdown', this.onPointerDown, true);
@@ -144,8 +143,7 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
       true
     );
     for (const unsub of this.unsubs.splice(0)) unsub();
-    this.backend?.dispose();
-    this.backend = null;
+    this.releaseBackend();
     this.canvas.remove();
     this.mount = null;
     whiteboardTelemetry.noteL0({ active: false, count: 0, backend: 'off' });
@@ -186,6 +184,16 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
     }
   }
 
+  private ensureBackend() {
+    this.backend ??= createL0Backend(this.canvas);
+    return this.backend;
+  }
+
+  private releaseBackend() {
+    this.backend?.dispose();
+    this.backend = null;
+  }
+
   private refresh() {
     const enabled = this.flagEnabled();
     const active = shouldActivateL0Layer(
@@ -195,15 +203,17 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
     );
     this.setActive(active);
     whiteboardTelemetry.noteBoardObjects(this.gfx.layer.blocks.length);
-    if (!active || !this.backend) {
+    if (!active) {
+      this.releaseBackend();
       whiteboardTelemetry.noteL0({
         active: false,
         count: 0,
-        backend: this.backend?.kind ?? 'off',
+        backend: 'off',
       });
       return;
     }
 
+    const backend = this.ensureBackend();
     const selected = this.gfx.selection.selectedSet;
     const sources: L0Source[] = [];
     for (const model of this.gfx.layer.blocks) {
@@ -223,12 +233,12 @@ export class WhiteboardL0LayerExtension extends GfxExtension {
       typeof window !== 'undefined'
         ? Math.min(window.devicePixelRatio || 1, 2)
         : 1;
-    this.backend.resize(camera.width, camera.height, dpr);
-    this.backend.draw(this.sprites, camera);
+    backend.resize(camera.width, camera.height, dpr);
+    backend.draw(this.sprites, camera);
     whiteboardTelemetry.noteL0({
       active: true,
       count: this.sprites.filter(sprite => !sprite.live).length,
-      backend: this.backend.kind,
+      backend: backend.kind,
     });
   }
 
