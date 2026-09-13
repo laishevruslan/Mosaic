@@ -15,6 +15,7 @@ import {
   workshopChromeMode,
 } from './layout';
 import {
+  MOSAIC_FRAME_TITLE_CSS,
   MOSAIC_SELECTION_PANEL_CSS,
   MOSAIC_TOOLBAR_RAIL_CSS,
   MOSAIC_ZOOM_INNER_PANEL_CSS,
@@ -27,6 +28,7 @@ const toolbarSheetKey = {};
 const zoomHostSheetKey = {};
 const zoomInnerSheetKey = {};
 const selectionSheetKey = {};
+const frameTitleSheetKey = {};
 
 export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
@@ -36,6 +38,8 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
   `;
 
   private resizeObserver: ResizeObserver | null = null;
+
+  private mutationObserver: MutationObserver | null = null;
 
   private get gfx() {
     return this.std.get(GfxControllerIdentifier);
@@ -71,6 +75,22 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
     return this.viewportEl()?.querySelector('affine-toolbar-widget');
   }
 
+  private applyFrameTitleSkin(on: boolean) {
+    const titles =
+      this.viewportEl()?.querySelectorAll('affine-frame-title') ?? [];
+    for (const title of titles) {
+      if (on) {
+        adoptStyleSheet(
+          title.shadowRoot,
+          MOSAIC_FRAME_TITLE_CSS,
+          frameTitleSheetKey
+        );
+      } else {
+        dropStyleSheet(title.shadowRoot, frameTitleSheetKey);
+      }
+    }
+  }
+
   private applyMode(mode: MosaicWorkshopChromeMode) {
     const viewport = this.viewportEl();
     if (viewport) {
@@ -83,9 +103,8 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
       'edgeless-zoom-toolbar'
     );
     const selectionHost = this.selectionHostEl();
-    const selectionBar = selectionHost?.shadowRoot?.querySelector(
-      'editor-toolbar'
-    );
+    const selectionBar =
+      selectionHost?.shadowRoot?.querySelector('editor-toolbar');
 
     if (mode === 'rail') {
       toolbar?.setAttribute(MOSAIC_WORKSHOP_LAYOUT_ATTR, 'rail');
@@ -115,6 +134,7 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
         MOSAIC_SELECTION_PANEL_CSS,
         selectionSheetKey
       );
+      this.applyFrameTitleSkin(true);
       return;
     }
 
@@ -126,6 +146,7 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
     dropStyleSheet(zoomHost?.shadowRoot, zoomHostSheetKey);
     dropStyleSheet(zoomInner?.shadowRoot, zoomInnerSheetKey);
     dropStyleSheet(selectionBar?.shadowRoot, selectionSheetKey);
+    this.applyFrameTitleSkin(true);
   }
 
   private sync() {
@@ -146,6 +167,7 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
     const viewport = this.viewportEl();
     viewport?.removeAttribute(MOSAIC_WORKSHOP_CHROME_ATTR);
     this.applyMode('fallback');
+    this.applyFrameTitleSkin(false);
     viewport?.removeAttribute(MOSAIC_WORKSHOP_CHROME_ATTR);
   }
 
@@ -168,6 +190,15 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
       this.resizeObserver = new ResizeObserver(() => this.sync());
       this.resizeObserver.observe(viewport);
     }
+    if (viewport && typeof MutationObserver !== 'undefined') {
+      this.mutationObserver = new MutationObserver(() =>
+        this.applyFrameTitleSkin(true)
+      );
+      this.mutationObserver.observe(viewport, {
+        childList: true,
+        subtree: true,
+      });
+    }
     this.sync();
     requestAnimationFrame(() => this.sync());
   }
@@ -175,6 +206,8 @@ export class MosaicWorkshopChromeWidget extends WidgetComponent<RootBlockModel> 
   override disconnectedCallback() {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.mutationObserver?.disconnect();
+    this.mutationObserver = null;
     this.clear();
     super.disconnectedCallback();
   }

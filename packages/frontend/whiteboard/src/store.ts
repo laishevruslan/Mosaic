@@ -6,10 +6,17 @@ import {
 import { boardWidget } from './blocks/board';
 import { chartWidget } from './blocks/chart';
 import { helloWidget } from './blocks/hello';
+import { recordCardWidget } from './blocks/record-card';
 import { sketchWidget } from './blocks/sketch';
 import { collectStoreExtensions } from './register-gfx-widget';
 
-const whiteboardWidgets = [helloWidget, chartWidget, sketchWidget, boardWidget];
+const whiteboardWidgets = [
+  helloWidget,
+  chartWidget,
+  sketchWidget,
+  boardWidget,
+  recordCardWidget,
+];
 
 export class WhiteboardStoreExtension extends StoreExtensionProvider {
   override name = 'affine-whiteboard-store';

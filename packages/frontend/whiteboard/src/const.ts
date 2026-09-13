@@ -3,6 +3,7 @@ export const WHITEBOARD_FLAVOURS = {
   chart: 'wb:chart',
   sketch: 'wb:sketch',
   board: 'wb:board',
+  recordCard: 'wb:record-card',
 } as const;
 
 export type WhiteboardFlavour =
@@ -14,6 +15,7 @@ export const WHITEBOARD_SURFACE_CHILDREN = [
   WHITEBOARD_FLAVOURS.chart,
   WHITEBOARD_FLAVOURS.sketch,
   WHITEBOARD_FLAVOURS.board,
+  WHITEBOARD_FLAVOURS.recordCard,
 ] as const;
 
 export const HELLO_WIDGET_SIZE = {
@@ -35,6 +37,11 @@ export const BOARD_WIDGET_SIZE = {
 export const SKETCH_WIDGET_SIZE = {
   width: 560,
   height: 360,
+} as const;
+
+export const RECORD_CARD_WIDGET_SIZE = {
+  width: 280,
+  height: 136,
 } as const;
 
 /**

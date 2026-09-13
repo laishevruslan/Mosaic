@@ -17,6 +17,8 @@ export type EmbedLinkedDocBlockProps = {
   style: (typeof EmbedLinkedDocStyles)[number];
   caption: string | null;
   footnoteIdentifier: string | null;
+  /** Workspace tag ids (WC3). */
+  tags?: string[];
 } & ReferenceInfo;
 
 export class EmbedLinkedDocModel extends defineEmbedModel<EmbedLinkedDocBlockProps>(

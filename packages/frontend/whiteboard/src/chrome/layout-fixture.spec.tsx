@@ -50,5 +50,8 @@ describe('mosaic chrome layout fixture', () => {
         '[data-testid="mosaic-chrome-selection-fallback-1100"]'
       )
     ).not.toBeNull();
+    expect(
+      host.querySelector('[data-testid="mosaic-chrome-rail-sticky"]')
+    ).not.toBeNull();
   });
 });

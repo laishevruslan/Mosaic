@@ -350,6 +350,8 @@ Drop target на `wb:board` (уже `pointerdown stopPropagation`):
 props: { xywh, databaseDocId, databaseId, rowId, compact?: boolean }
 ```
 
+**WC3 (2026-09-13, не закрывает B2):** в `@affine/whiteboard` уже есть chrome-скелет `packages/frontend/whiteboard/src/blocks/record-card/` (flavour, pending UI, slash под `enable_workshop_chrome`, `tags[]`). Face записи, sync с `affine:database`, ingest/egress — по-прежнему этот пункт B2. Не дублировать схему.
+
 - Face = те же visible fields, что у kanban card.
 - Иконка «linked to board».
 - Правка title/assignee/status на карточке пишет в database.

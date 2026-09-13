@@ -29,6 +29,8 @@ export type BookmarkBlockProps = {
   caption: string | null;
   footnoteIdentifier: string | null;
   comments?: Record<string, boolean>;
+  /** Workspace tag ids (WC3). */
+  tags?: string[];
 } & LinkPreviewData &
   Omit<GfxCommonBlockProps, 'scale'> &
   BlockMeta;
@@ -54,6 +56,7 @@ const defaultBookmarkProps: BookmarkBlockProps = {
 
   footnoteIdentifier: null,
   comments: undefined,
+  tags: undefined,
 };
 
 export const BookmarkBlockSchema = defineBlockSchema({

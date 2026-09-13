@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { BoardBlockSchema } from '../blocks/board/model';
 import { ChartBlockSchema } from '../blocks/chart/model';
 import { HelloBlockSchema } from '../blocks/hello/model';
+import { RecordCardBlockSchema } from '../blocks/record-card/model';
 import { SketchBlockSchema } from '../blocks/sketch/model';
 import { WHITEBOARD_FLAVOURS, WHITEBOARD_SURFACE_CHILDREN } from '../const';
 import {
@@ -18,6 +19,7 @@ describe('whiteboard scaffold', () => {
     expect(WHITEBOARD_SURFACE_CHILDREN).toContain('wb:chart');
     expect(WHITEBOARD_SURFACE_CHILDREN).toContain('wb:sketch');
     expect(WHITEBOARD_SURFACE_CHILDREN).toContain('wb:board');
+    expect(WHITEBOARD_SURFACE_CHILDREN).toContain('wb:record-card');
   });
 
   it('collects schema extensions from registerGfxWidget', () => {
@@ -47,5 +49,13 @@ describe('whiteboard scaffold', () => {
     expect(BoardBlockSchema.model.flavour).toBe(WHITEBOARD_FLAVOURS.board);
     expect(BoardBlockSchema.model.parent).toContain('affine:surface');
     expect(BoardBlockSchema.model.parent).toContain('affine:note');
+  });
+
+  it('registers wb:record-card as a chrome skeleton for Kanban rows', () => {
+    expect(RecordCardBlockSchema.model.flavour).toBe(
+      WHITEBOARD_FLAVOURS.recordCard
+    );
+    expect(RecordCardBlockSchema.model.parent).toContain('affine:surface');
+    expect(RecordCardBlockSchema.model.parent).toContain('affine:note');
   });
 });

@@ -7,7 +7,13 @@ import { z } from 'zod';
 import { boardWidget } from './blocks/board';
 import { chartWidget } from './blocks/chart';
 import { helloWidget } from './blocks/hello';
+import { recordCardWidget } from './blocks/record-card';
 import { sketchWidget } from './blocks/sketch';
+import { stickyQuickTool } from './chrome/sticky-quick-tool';
+import { StickyTool } from './chrome/sticky-tool';
+import { stickyToolbarExtension } from './chrome/sticky-toolbar';
+import { tagChipsWidget } from './chrome/tag-chips-layer';
+import { tagToolbarExtension } from './chrome/tag-toolbar';
 import { workshopChromeWidget } from './chrome/workshop-chrome';
 import { WhiteboardCollabLayerExtension } from './collab/collab-layer';
 import { effects } from './effects';
@@ -74,6 +80,7 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
     if (options?.enableBoard) {
       widgets.push(boardWidget);
     }
+    widgets.push(recordCardWidget);
 
     const extensions = collectViewExtensions(
       widgets,
@@ -91,6 +98,11 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
       }
       if (options?.enableWorkshopChrome) {
         context.register(workshopChromeWidget);
+        context.register(StickyTool);
+        context.register(stickyQuickTool);
+        context.register(stickyToolbarExtension);
+        context.register(tagToolbarExtension);
+        context.register(tagChipsWidget);
       }
       if (options?.enablePerfHud && typeof document !== 'undefined') {
         queueMicrotask(() => {

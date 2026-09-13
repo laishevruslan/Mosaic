@@ -17,6 +17,7 @@ const FILLS: Record<string, string> = {
   [WHITEBOARD_FLAVOURS.chart]: '#dbeafe',
   [WHITEBOARD_FLAVOURS.sketch]: '#fef3c7',
   [WHITEBOARD_FLAVOURS.board]: '#dcfce7',
+  [WHITEBOARD_FLAVOURS.recordCard]: '#f4f4f5',
 };
 
 function readXywh(model: BlockModel) {
@@ -92,4 +93,5 @@ export const WhiteboardLayoutHandlerExtensions: ExtensionType[] = [
   createHandler(WHITEBOARD_FLAVOURS.chart),
   createHandler(WHITEBOARD_FLAVOURS.sketch),
   createHandler(WHITEBOARD_FLAVOURS.board),
+  createHandler(WHITEBOARD_FLAVOURS.recordCard),
 ];

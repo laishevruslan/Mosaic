@@ -1,3 +1,5 @@
+import { isInsideStickyNote } from '@blocksuite/affine-shared/utils';
+
 import type {
   SlashMenuActionItem,
   SlashMenuConfig,
@@ -46,6 +48,22 @@ function itemCompareFn(a: SlashMenuItem, b: SlashMenuItem) {
   return aItemIndex - bItemIndex;
 }
 
+/**
+ * Workshop sticky notes keep paragraph/list/style/date/actions.
+ * Hide page, embed/media, and database inserts (WC2).
+ */
+const STICKY_SLASH_HIDDEN_GROUPS = new Set([
+  'Page',
+  'Content & Media',
+  'Database',
+]);
+
+function isStickySlashAllowed(item: SlashMenuItem): boolean {
+  if (!item.group) return true;
+  const [, groupName] = parseGroup(item.group);
+  return !STICKY_SLASH_HIDDEN_GROUPS.has(groupName);
+}
+
 export function buildSlashMenuItems(
   items: SlashMenuItem[],
   context: SlashMenuContext,
@@ -53,8 +71,11 @@ export function buildSlashMenuItems(
 ): SlashMenuItem[] {
   if (transform) items = items.map(transform);
 
+  const sticky = isInsideStickyNote(context.model);
+
   const result = items
     .filter(item => (item.when ? item.when(context) : true))
+    .filter(item => !sticky || isStickySlashAllowed(item))
     .sort(itemCompareFn)
     .map(item => {
       if (isSubMenuItem(item)) {

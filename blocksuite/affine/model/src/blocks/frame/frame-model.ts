@@ -31,6 +31,8 @@ export type FrameBlockProps = {
   childElementIds?: Record<string, boolean>;
   presentationIndex?: string;
   comments?: Record<string, boolean>;
+  /** Workspace tag ids (WC3). Not part of last-props. */
+  tags?: string[];
 } & GfxCompatibleProps;
 
 export const FrameZodSchema = z
@@ -52,6 +54,7 @@ export const FrameBlockSchema = defineBlockSchema({
     presentationIndex: generateKeyBetweenV2(null, null),
     lockedBySelf: false,
     comments: undefined,
+    tags: undefined,
   }),
   metadata: {
     version: 1,

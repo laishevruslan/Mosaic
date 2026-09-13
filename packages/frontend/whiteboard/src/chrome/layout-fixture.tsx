@@ -36,6 +36,15 @@ function RailButtons() {
       <button
         type="button"
         className={mosaicChromeIconButton.comfortable}
+        data-testid="mosaic-chrome-rail-sticky"
+        aria-pressed="false"
+        aria-label={I18n['com.affine.whiteboard.chrome.rail.sticky']()}
+      >
+        <span className={mosaicChromeIcon} />
+      </button>
+      <button
+        type="button"
+        className={mosaicChromeIconButton.comfortable}
         aria-pressed="false"
         aria-label={I18n['com.affine.whiteboard.chrome.rail.frame']()}
       >
@@ -61,13 +70,7 @@ function RailButtons() {
   );
 }
 
-function Board({
-  mode,
-  width,
-}: {
-  mode: 'rail' | 'fallback';
-  width: number;
-}) {
+function Board({ mode, width }: { mode: 'rail' | 'fallback'; width: number }) {
   return (
     <section
       className={styles.layoutFixtureBoard}

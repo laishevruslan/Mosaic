@@ -126,3 +126,18 @@ export const MOSAIC_SELECTION_PANEL_CSS = `
   font-family: var(--mosaic-font-ui);
 }
 `;
+
+export const MOSAIC_FRAME_TITLE_CSS = `
+:host {
+  min-height: var(--mosaic-frame-title-height, 24px);
+  height: var(--mosaic-frame-title-height, 24px);
+  border-radius: var(--mosaic-chrome-radius, 8px);
+  font-family: var(--mosaic-font-ui);
+  padding: 0 8px;
+  border-color: var(--affine-border-color);
+}
+:host([data-selected='true']) {
+  border-color: var(--mosaic-accent);
+  box-shadow: 0 0 0 1px var(--mosaic-accent);
+}
+`;

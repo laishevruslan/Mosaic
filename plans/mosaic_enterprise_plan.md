@@ -711,7 +711,11 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 **WC0 (2026-09-13, не закрывает пункт выше):** токены и recipes в `packages/frontend/whiteboard/src/chrome/` (акцент `#0d7377`, hit 32/36, sticky light/dark, contrast ≥ 4.5:1, флаг `enable_workshop_chrome` default false).
 
-**WC1 (2026-09-13, не закрывает пункт выше):** left rail overlay через widget `wb-workshop-chrome` + adopted CSS на stock toolbar/zoom/selection (не fork `edgeless-toolbar.ts`). Fallback нижнего бара при флаге off / mobile / viewport ≤1200. Playwright spec 1440/1280 написан, **не гонялся**. Sticky preset — WC2.
+**WC1 (2026-09-13, не закрывает пункт выше):** left rail overlay через widget `wb-workshop-chrome` + adopted CSS на stock toolbar/zoom/selection (не fork `edgeless-toolbar.ts`). Fallback нижнего бара при флаге off / mobile / viewport ≤1200. Playwright spec 1440/1280 написан, **не гонялся**.
+
+**WC2 (2026-09-13, не закрывает пункт выше):** sticky = пресет `affine:note` (`edgeless.kind: 'sticky'`), `StickyTool` + rail button + Mosaic palette на selection bar, slash без Page/embed/Database, gfx `connectable`. Playwright sticky spec написан, **не гонялся**. Flag default false. SDK — WC4.
+
+**WC3 (2026-09-13, не закрывает пункт выше):** frame title 24 / empty dashed, app-card skin bookmark+linked-doc, `tags[]` + chips/picker (workspace catalog), chrome skeleton `wb:record-card` без Kanban sync. Playwright objects spec написан, **не гонялся**. Flag default false. SDK createFrame/createCard — WC4.
 - [ ] Kanban A+B+C (toolbar, table switch, ingest/egress, 14 templates)
 - [ ] Default-on flags после smoke e2e
 - [ ] Dual-browser Playwright whiteboard

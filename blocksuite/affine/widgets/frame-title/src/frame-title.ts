@@ -151,6 +151,10 @@ export class AffineFrameTitle extends SignalWatcher(
     this.style.maxWidth = `${maxWidth}px`;
     this.style.transformOrigin = nestedFrame ? 'top left' : 'bottom left';
     this.style.color = this.colors.text;
+    this.dataset.selected =
+      this.gfx.selection.has(this.model.id) && !this._editing
+        ? 'true'
+        : 'false';
   }
 
   override connectedCallback() {

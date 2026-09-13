@@ -12,11 +12,35 @@ export {
   zoomClusterRect,
 } from './layout';
 export {
+  chipOverflow,
+  MOSAIC_TAG_CHIP_MAX,
+  MOSAIC_TAG_COLORS,
+  MOSAIC_TAGGABLE_FLAVOURS,
+  type MosaicTagOption,
+  readTagIds,
+} from './object-tags';
+export {
   mosaicChromeIcon,
   mosaicChromeIconButton,
   mosaicChromePanel,
   mosaicStickySwatch,
+  mosaicTagChip,
 } from './panel.css';
+export {
+  createStickyNoteProps,
+  MOSAIC_STICKY_DEFAULT_SWATCH,
+  MOSAIC_STICKY_HEIGHT,
+  MOSAIC_STICKY_KIND,
+  MOSAIC_STICKY_TOOL,
+  MOSAIC_STICKY_WIDTH,
+  mosaicStickyBackground,
+  type MosaicStickyColor,
+  type MosaicStickyNoteProps,
+  stickySwatchFromColor,
+} from './sticky-preset';
+export { stickyQuickTool } from './sticky-quick-tool';
+export { addSticky, StickyTool } from './sticky-tool';
+export { stickyToolbarExtension } from './sticky-toolbar';
 export {
   contrastRatio,
   darkChromeVars,
@@ -27,11 +51,13 @@ export {
   MOSAIC_ACCENT_HOVER_DARK,
   MOSAIC_ACCENT_PRESSED,
   MOSAIC_ACCENT_PRESSED_DARK,
+  MOSAIC_APP_CARD_SHADOW_VALUE,
   MOSAIC_CHROME_BORDER_VALUE,
   MOSAIC_CHROME_RADIUS_PX,
   MOSAIC_CHROME_SHADOW_VALUE,
   MOSAIC_CSS_VAR,
   MOSAIC_FONT_UI_VALUE,
+  MOSAIC_FRAME_TITLE_HEIGHT,
   MOSAIC_HIT,
   MOSAIC_HIT_COMFORTABLE,
   MOSAIC_ICON,

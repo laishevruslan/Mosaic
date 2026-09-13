@@ -36,10 +36,17 @@ export class FrameBlockComponent extends GfxBlockComponent<FrameBlockModel> {
       })
     );
     this._disposables.add(
+      this.gfx.selection.slots.updated.subscribe(() => {
+        this._syncChromeAttrs();
+        this.requestUpdate();
+      })
+    );
+    this._disposables.add(
       this.gfx.viewport.viewportUpdated.subscribe(() => {
         this.requestUpdate();
       })
     );
+    this._syncChromeAttrs();
   }
 
   /**
@@ -80,6 +87,7 @@ export class FrameBlockComponent extends GfxBlockComponent<FrameBlockModel> {
   }
 
   override renderGfxBlock() {
+    this._syncChromeAttrs();
     const { model, showBorder, std } = this;
     const backgroundColor = std
       .get(ThemeProvider)
@@ -111,6 +119,13 @@ export class FrameBlockComponent extends GfxBlockComponent<FrameBlockModel> {
       ></div>
       ${widgets}
     `;
+  }
+
+  private _syncChromeAttrs() {
+    this.dataset.empty = this.model.childIds.length === 0 ? 'true' : 'false';
+    this.dataset.selected = this.gfx.selection.has(this.model.id)
+      ? 'true'
+      : 'false';
   }
 
   @state()

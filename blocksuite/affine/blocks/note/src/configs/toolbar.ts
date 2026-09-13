@@ -8,6 +8,7 @@ import {
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@blocksuite/affine-shared/services';
+import { isStickyNote } from '@blocksuite/affine-shared/utils';
 import { Bound } from '@blocksuite/global/gfx';
 import {
   AutoHeightIcon,
@@ -66,6 +67,7 @@ const builtinSurfaceToolbarConfig = {
         return (
           elements.length === 1 &&
           !elements[0].isPageBlock() &&
+          !isStickyNote(elements[0]) &&
           !ctx.features.getFlag('enable_advanced_block_visibility')
         );
       },
@@ -121,7 +123,8 @@ const builtinSurfaceToolbarConfig = {
         const elements = ctx.getSurfaceModelsByType(NoteBlockModel);
         return (
           elements.length > 0 &&
-          elements[0].props.displayMode !== NoteDisplayMode.DocOnly
+          elements[0].props.displayMode !== NoteDisplayMode.DocOnly &&
+          !elements.every(isStickyNote)
         );
       },
       actions: [
@@ -154,8 +157,10 @@ const builtinSurfaceToolbarConfig = {
       ></affine-tooltip-content-with-shortcut>`,
       active: false,
       when(ctx) {
+        const notes = ctx.getSurfaceModelsByType(NoteBlockModel);
         return (
-          ctx.getSurfaceModelsByType(NoteBlockModel).length === 1 &&
+          notes.length === 1 &&
+          !isStickyNote(notes[0]) &&
           ctx.features.getFlag('enable_advanced_block_visibility')
         );
       },
@@ -170,6 +175,7 @@ const builtinSurfaceToolbarConfig = {
         const elements = ctx.getSurfaceModelsByType(NoteBlockModel);
         return (
           elements.length > 0 &&
+          !elements.every(isStickyNote) &&
           (!elements[0].isPageBlock() ||
             !ctx.std.getOptional(NoteConfigExtension.identifier)
               ?.edgelessNoteHeader)

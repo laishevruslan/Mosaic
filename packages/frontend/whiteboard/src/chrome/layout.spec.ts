@@ -11,6 +11,7 @@ import {
   zoomClusterRect,
 } from './layout';
 import {
+  MOSAIC_FRAME_TITLE_CSS,
   MOSAIC_SELECTION_PANEL_CSS,
   MOSAIC_TOOLBAR_RAIL_CSS,
   MOSAIC_ZOOM_INNER_PANEL_CSS,
@@ -90,9 +91,7 @@ describe('mosaic workshop chrome layout', () => {
       expect(rail.w).toBe(MOSAIC_RAIL_WIDTH);
       expect(zoom.x).toBe(MOSAIC_CHROME_INSET);
       expect(zoom.y).toBeGreaterThan(rail.y + rail.h);
-      expect(
-        railOverlapsZoom({ viewportHeight, railHeight: 220 })
-      ).toBe(false);
+      expect(railOverlapsZoom({ viewportHeight, railHeight: 220 })).toBe(false);
     }
   );
 
@@ -104,12 +103,15 @@ describe('mosaic workshop chrome layout', () => {
     expect(MOSAIC_ZOOM_PANEL_CSS).toContain('bottom: 12px');
     expect(MOSAIC_ZOOM_INNER_PANEL_CSS).toContain('var(--mosaic-paper)');
     expect(MOSAIC_SELECTION_PANEL_CSS).toContain('var(--mosaic-chrome-radius)');
+    expect(MOSAIC_FRAME_TITLE_CSS).toContain('24px');
+    expect(MOSAIC_FRAME_TITLE_CSS).toContain('var(--mosaic-accent)');
 
     const haystack = [
       MOSAIC_TOOLBAR_RAIL_CSS,
       MOSAIC_ZOOM_PANEL_CSS,
       MOSAIC_ZOOM_INNER_PANEL_CSS,
       MOSAIC_SELECTION_PANEL_CSS,
+      MOSAIC_FRAME_TITLE_CSS,
     ]
       .join('\n')
       .toLowerCase();

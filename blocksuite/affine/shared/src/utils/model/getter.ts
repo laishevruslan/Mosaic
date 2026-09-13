@@ -41,6 +41,16 @@ export function findNoteBlockModel(model: BlockModel) {
   ) as NoteBlockModel | null;
 }
 
+export function isStickyNote(
+  model: BlockModel | null | undefined
+): model is NoteBlockModel {
+  return matchModels(model, [NoteBlockModel]) && model.isSticky();
+}
+
+export function isInsideStickyNote(model: BlockModel): boolean {
+  return isStickyNote(findNoteBlockModel(model));
+}
+
 export function getLastNoteBlock(doc: Store) {
   let note: NoteBlockModel | null = null;
   if (!doc.root) return null;

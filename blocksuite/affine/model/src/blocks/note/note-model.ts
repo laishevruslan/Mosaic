@@ -70,6 +70,7 @@ export const NoteBlockSchema = defineBlockSchema({
       },
     },
     comments: undefined,
+    tags: undefined,
   }),
   metadata: {
     version: 1,
@@ -94,6 +95,10 @@ export type NoteProps = {
   edgeless: NoteEdgelessProps;
   comments?: Record<string, boolean>;
   /**
+   * Workspace tag ids (WC3). Omitted from last-props / NoteZodSchema.
+   */
+  tags?: string[];
+  /**
    * @deprecated
    * use `displayMode` instead
    * hidden:true -> displayMode:NoteDisplayMode.EdgelessOnly:
@@ -103,6 +108,8 @@ export type NoteProps = {
    */
   hidden: boolean;
 } & GfxCompatibleProps;
+
+export type NoteEdgelessKind = 'note' | 'sticky';
 
 export type NoteEdgelessProps = {
   style: {
@@ -114,6 +121,11 @@ export type NoteEdgelessProps = {
   collapse?: boolean;
   collapsedHeight?: number;
   scale?: number;
+  /**
+   * Workshop sticky preset. Omitted or `'note'` is a regular edgeless note.
+   * Not part of last-props so creating a sticky does not leak into NoteTool.
+   */
+  kind?: NoteEdgelessKind;
 };
 
 export class NoteBlockModel
@@ -163,5 +175,9 @@ export class NoteBlockModel
           child.props.displayMode !== NoteDisplayMode.EdgelessOnly
       ) === this
     );
+  }
+
+  isSticky() {
+    return this.props.edgeless.kind === 'sticky';
   }
 }

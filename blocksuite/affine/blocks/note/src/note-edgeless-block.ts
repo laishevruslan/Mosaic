@@ -166,6 +166,7 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
     );
 
     this.disposables.addFromEvent(this, 'keydown', this._handleKeyDown);
+    this._syncNoteKind();
   }
 
   override disconnectedCallback() {
@@ -213,12 +214,17 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
   }
 
   override updated(changedProperties: PropertyValues) {
+    this._syncNoteKind();
     if (changedProperties.has('_editing') && this._editing) {
       this.std.getOptional(TelemetryProvider)?.track('EdgelessNoteEditing', {
         page: 'edgeless',
         segment: this.model.isPageBlock() ? 'page' : 'note',
       });
     }
+  }
+
+  private _syncNoteKind() {
+    this.dataset.noteKind = this.model.isSticky() ? 'sticky' : 'note';
   }
 
   override getCSSScaleVal(): number {
@@ -276,6 +282,7 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
 
     const hasHeader = !!this.std.getOptional(NoteConfigExtension.identifier)
       ?.edgelessNoteHeader;
+    const sticky = this.model.isSticky();
 
     return html`
       <div
@@ -284,6 +291,7 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
         data-model-height="${bound.h}"
         data-editing=${this._editing}
         data-collapse=${ifDefined(collapse)}
+        data-note-kind=${sticky ? 'sticky' : 'note'}
         data-testid="edgeless-note-container"
         @mouseleave=${this._leaved}
         @mousemove=${this._hovered}
@@ -323,6 +331,7 @@ export class EdgelessNoteBlockComponent extends toGfxBlockComponent(
         ></edgeless-note-mask>
 
         ${
+          !sticky &&
           isCollapsable &&
           tool.currentToolName$.value !== 'frameNavigator' &&
           (!this.model.isPageBlock() || !hasHeader)

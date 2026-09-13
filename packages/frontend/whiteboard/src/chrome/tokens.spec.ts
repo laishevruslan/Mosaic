@@ -15,9 +15,11 @@ import {
   MOSAIC_ACCENT_HOVER_DARK,
   MOSAIC_ACCENT_PRESSED,
   MOSAIC_ACCENT_PRESSED_DARK,
+  MOSAIC_APP_CARD_SHADOW_VALUE,
   MOSAIC_CHROME_RADIUS_PX,
   MOSAIC_CSS_VAR,
   MOSAIC_FONT_UI_VALUE,
+  MOSAIC_FRAME_TITLE_HEIGHT,
   MOSAIC_HIT,
   MOSAIC_HIT_COMFORTABLE,
   MOSAIC_ICON,
@@ -63,6 +65,12 @@ describe('mosaic workshop chrome tokens', () => {
     expect(MOSAIC_ICON).toBe(20);
     expect(MOSAIC_SPACE).toBe(4);
     expect(MOSAIC_CHROME_RADIUS_PX).toBe(8);
+    expect(MOSAIC_FRAME_TITLE_HEIGHT).toBe(24);
+    expect(MOSAIC_APP_CARD_SHADOW_VALUE).toBe('var(--affine-shadow-1)');
+    expect(light[MOSAIC_CSS_VAR.frameTitleHeight]).toBe('24px');
+    expect(light[MOSAIC_CSS_VAR.appCardShadow]).toBe(
+      MOSAIC_APP_CARD_SHADOW_VALUE
+    );
     expect(light[MOSAIC_CSS_VAR.hit]).toBe('32px');
     expect(light[MOSAIC_CSS_VAR.hitComfortable]).toBe('36px');
     expect(light[MOSAIC_CSS_VAR.icon]).toBe('20px');
@@ -99,6 +107,7 @@ describe('mosaic workshop chrome tokens', () => {
       MOSAIC_ACCENT_HOVER_DARK,
       MOSAIC_ACCENT_PRESSED_DARK,
       MOSAIC_FONT_UI_VALUE,
+      MOSAIC_APP_CARD_SHADOW_VALUE,
       MOSAIC_STICKY_INK_LIGHT,
       MOSAIC_STICKY_INK_DARK,
       ...Object.values(MOSAIC_STICKY_LIGHT),

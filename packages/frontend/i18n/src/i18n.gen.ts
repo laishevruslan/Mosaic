@@ -6863,7 +6863,7 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.name"](): string;
     /**
-      * `Left creation rail, Mosaic panel chrome on zoom and the selection bar. Falls back to the bottom toolbar when off, on mobile, or below 1200px. Off by default.`
+      * `Left creation rail with sticky, Mosaic chrome on frames/cards/tags, zoom, and the selection bar. Falls back to the bottom toolbar when off, on mobile, or below 1200px. Off by default.`
       */
     ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.description"](): string;
     /**
@@ -6919,6 +6919,14 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.whiteboard.chrome.sticky.fog"](): string;
     /**
+      * `Color`
+      */
+    ["com.affine.whiteboard.chrome.sticky.palette"](): string;
+    /**
+      * `Sticky notes`
+      */
+    ["com.affine.whiteboard.chrome.sticky.fixture.title"](): string;
+    /**
       * `Workshop chrome layout`
       */
     ["com.affine.whiteboard.chrome.layout.title"](): string;
@@ -6930,6 +6938,10 @@ export function useAFFiNEI18N(): {
       * `Select`
       */
     ["com.affine.whiteboard.chrome.rail.select"](): string;
+    /**
+      * `Sticky`
+      */
+    ["com.affine.whiteboard.chrome.rail.sticky"](): string;
     /**
       * `Frame`
       */
@@ -6950,6 +6962,68 @@ export function useAFFiNEI18N(): {
       * `Selection`
       */
     ["com.affine.whiteboard.chrome.selection.label"](): string;
+    /**
+      * `Frame, card, and tags`
+      */
+    ["com.affine.whiteboard.chrome.objects.fixture.title"](): string;
+    /**
+      * `Frame`
+      */
+    ["com.affine.whiteboard.chrome.frame.title"](): string;
+    /**
+      * `Empty frame`
+      */
+    ["com.affine.whiteboard.chrome.frame.empty"](): string;
+    /**
+      * `App card`
+      */
+    ["com.affine.whiteboard.chrome.card.fixture.title"](): string;
+    /**
+      * `Icon, title, description`
+      */
+    ["com.affine.whiteboard.chrome.card.fixture.meta"](): string;
+    /**
+      * `Tags`
+      */
+    ["com.affine.whiteboard.chrome.tag.picker"](): string;
+    /**
+      * `Add tag`
+      */
+    ["com.affine.whiteboard.chrome.tag.add"](): string;
+    /**
+      * `+{{count}}`
+      */
+    ["com.affine.whiteboard.chrome.tag.overflow"](options: {
+        readonly count: string | number;
+    }): string;
+    /**
+      * `Idea`
+      */
+    ["com.affine.whiteboard.chrome.tag.sample"](): string;
+    /**
+      * `No tags`
+      */
+    ["com.affine.whiteboard.chrome.tag.none"](): string;
+    /**
+      * `Record card`
+      */
+    ["com.affine.whiteboard.chrome.record-card.title"](): string;
+    /**
+      * `Record`
+      */
+    ["com.affine.whiteboard.chrome.record-card.kicker"](): string;
+    /**
+      * `Kanban row pending`
+      */
+    ["com.affine.whiteboard.chrome.record-card.pending"](): string;
+    /**
+      * `Record card`
+      */
+    ["com.affine.whiteboard.chrome.record-card.slash-name"](): string;
+    /**
+      * `Canvas card chrome for a Kanban row. Database sync is not wired yet.`
+      */
+    ["com.affine.whiteboard.chrome.record-card.slash-description"](): string;
     /**
       * `Follow {{name}}`
       */

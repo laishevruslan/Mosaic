@@ -380,7 +380,7 @@ board.on('selection:change' | 'viewport:change')
 
 - Playwright screenshots 1440/1280 **не выполнялись** в этой среде (нет поднятого `@affine/web`, лимит памяти). Spec написан: rail left / zoom bottom-left / no overlap; flag off ≡ bottom toolbar; sidebar сворачивается, чтобы editor viewport > 1200. Базовые PNG не сняты.
 - Senior tools — hover-колонка справа, не отдельный popover «ещё». Плотность 32–36 у quick tools; senior paper-кнопки в flyout остаются ~96×64.
-- Sticky как отдельная кнопка rail — **WC2**. Порядок tools не переставлялся.
+- Sticky как отдельная кнопка rail — **сделано в WC2**.
 - Stock toolbar остаётся в DOM (скрыт/переставлен CSS), чтобы mixins сохраняли `edgelessToolbarContext`.
 - Storybook не запускался (как WC0).
 - i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
@@ -389,18 +389,53 @@ board.on('selection:change' | 'viewport:change')
 
 ### Фаза WC2 — Sticky + palette (2 недели)
 
-- [ ] `edgeless.kind: 'sticky'`
-- [ ] StickyTool + rail button
-- [ ] Defaults size/shadow/pastel
-- [ ] Ограниченный slash
-- [ ] Connector sticky→frame
+- [x] `edgeless.kind: 'sticky'`
+- [x] StickyTool + rail button
+- [x] Defaults size/shadow/pastel
+- [x] Ограниченный slash
+- [x] Connector sticky→frame
+
+**Сделано в коде (2026-09-13).** Sticky — пресет `affine:note`, не новый flavour. `NoteEdgelessProps.kind?: 'note' | 'sticky'` в `note-model.ts` (не в `NoteZodSchema` / last-props, чтобы StickyTool не протекал в NoteTool). `NoteBlockModel.isSticky()`, `isStickyNote` / `isInsideStickyNote`. View: `affine-edgeless-note[data-note-kind=sticky]` + CSS ink/font, скрыт collapse. Toolbar: скрыты Display in Page / Affine style panel / slicer / auto-height; палитра Mosaic через `custom:affine:surface:note` (`wb-sticky-palette`). `StickyTool` (`toolName = 'mosaic:sticky'`) пишет 218×200, `displayMode: edgeless`, butter `{light,dark}`, `NoteShadow.Sticker`, radius 8, `store.addBlock` (не CRUD lastProps). Quick tool priority 95. Slash: `buildSlashMenuItems` прячет группы Page / Content & Media / Database. Connector: gfx notes `connectable = true`. i18n en+ru. Фикстура `sticky-fixture.tsx` + Story `Whiteboard/Chrome/Sticky`. Unit: `sticky-preset.spec.ts`, `sticky-fixture.spec.tsx`. Playwright spec: `tests/affine-local/e2e/whiteboard/workshop-chrome-sticky.spec.ts`.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Playwright sticky e2e **не выполнялся** (нет поднятого `@affine/web`, лимит памяти). Spec написан: flag off — нет кнопки; flag on — click tool + canvas → `[data-note-kind=sticky]`. Базовые PNG не снимались.
+- Нет drag-to-size: click ставит фиксированные 218×200 (`NOTE_MIN_WIDTH` × 200; план ~200×200).
+- Порядок tools: sticky — **новая** quick-кнопка (priority 95), stock Note не переставлялся.
+- Slash: прячутся Page / embed-media / Database; в Basic остаются headings, code, quote, divider, callout/latex. План формулировал «paragraph + lists».
+- Connector sticky→frame: наследуется `connectable = true`; отдельного e2e рисования коннектора нет.
+- Tags / lock chip / author на sticky — tags сделаны в WC3; lock chip / author — P2. Vote/emoji — facilitation. SDK `board.createSticky` — WC4.
+- Flag `enable_workshop_chrome` по-прежнему default **false**.
+- i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
+- Isolated `tsc` Lit tool/palette/widget (`sticky-tool.ts`, `sticky-tool-button.ts`, `sticky-palette.ts`, `sticky-toolbar.ts`, `workshop-chrome.ts`) требует полный yarn-граф `@blocksuite/*`. Preset + CSS + фикстуры проверяются отдельно.
+- Storybook не запускался (как WC0/WC1).
+- `yarn.lock` не обновлялся.
 
 ### Фаза WC3 — Frame / Card / Tag (2 недели)
 
-- [ ] Frame title/empty sкин
-- [ ] App-card chrome bookmark + linked-doc
-- [ ] `tags[]` + chips + picker в selection bar
-- [ ] Каркас `wb:record-card` chrome, модель — по готовности Kanban
+- [x] Frame title/empty sкин
+- [x] App-card chrome bookmark + linked-doc
+- [x] `tags[]` + chips + picker в selection bar
+- [x] Каркас `wb:record-card` chrome, модель — по готовности Kanban
+
+**Сделано в коде (2026-09-13).** Overlay CSS + Mosaic Lit, без fork `edgeless-toolbar.ts` / `frame-title.ts` height constant. Empty frame: `affine-frame[data-empty]` dashed border; title 24px + accent только при `[data-selected=true]` (adopted CSS + MutationObserver). App-card skin на edgeless `affine:bookmark` и `affine:embed-linked-doc` (radius 8, mosaic border/paper, `--affine-shadow-1`, hit 36). `tags?: string[]` на note (только sticky UI), frame, bookmark, linked-doc, `wb:record-card`. Каталог — workspace `meta.properties.tags.options` (`{id,value,color}` + `--affine-tag-*`), не `@affine/core` TagService. Chips max 3 + overflow (`wb-tag-chips-layer`); picker `wb-tag-picker` в selection bar (`custom:affine:*`). `wb:record-card` — chrome skeleton `{ xywh, databaseDocId, databaseId, rowId, compact, tags }` + pending UI; slash под `enable_workshop_chrome`. i18n en+ru. Фикстура `objects-fixture.tsx` + Story `Whiteboard/Chrome/Objects`. Unit: `object-tags.spec.ts`, `objects-fixture.spec.tsx`. Playwright spec: `tests/affine-local/e2e/whiteboard/workshop-chrome-objects.spec.ts`.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Playwright WC3 e2e **не выполнялся** (нет поднятого `@affine/web`, лимит памяти). Spec написан: flag on → sticky → `[data-testid=mosaic-tag-add]`. Базовые PNG не снимались.
+- Frame title skin — adopted CSS, не fork константы высоты в `frame-title.ts` (stock остаётся 22px при флаге off).
+- Empty-frame templates (retro / 2×2 / agenda) — WC5. SDK `createFrame` / `createCard` / `zoomToFrame` / `getMetadata` — WC4.
+- `wb:record-card` — только chrome: нет database face, нет row sync / ingest, empty pending UI. Схема/синк — Kanban B2, не дублируется здесь.
+- Slash record-card в группе Content & Media; на sticky slash эта группа скрыта (фильтр WC2).
+- Tag picker не использует React TagService / `@affine/core` (цикл: core уже зависит от `@affine/whiteboard`).
+- Chip overlay может съезжать относительно zoom/parent transform; надёжный UI — picker на selection bar.
+- Tags на page notes **не** показываются (только sticky среди `affine:note`).
+- Lock chip / author — P2. Vote/emoji — facilitation. DB Labels kanban ingest — F8.
+- Flag `enable_workshop_chrome` по-прежнему default **false**.
+- i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
+- Isolated `tsc` Lit widgets (`tag-picker.ts`, `tag-chips.ts`, `tag-chips-layer.ts`, `tag-toolbar.ts`, `workshop-chrome.ts`, record-card Lit) требует полный yarn-граф `@blocksuite/*`. `object-tags.ts` / tokens / CSS / фикстуры проверяются отдельно. `register-gfx-widget.spec.ts` в этой среде не загружается (`Cannot find package '@blocksuite/affine/std/gfx'`).
+- Storybook не запускался (как WC0–WC2).
+- `yarn.lock` не обновлялся.
 
 ### Фаза WC4 — Viewport / Panel / Metadata + SDK (2 недели)
 
@@ -449,6 +484,6 @@ board.on('selection:change' | 'viewport:change')
 
 ## 12. Следующий конкретный шаг
 
-1. WC2 sticky preset (`edgeless.kind: 'sticky'`) + palette на selection bar.
-2. Снять Playwright screenshots 1440/1280 (`workshop-chrome-layout.spec.ts`) на живом `@affine/web`.
+1. WC4 `mosaic.board.viewport` фасад + `MosaicBoardPanelHost` + `mosaicMeta` / BlockMeta + SDK слой 1 (`plans/mosaic_workshop_chrome_plan.md` §5.6–5.8).
+2. Снять Playwright screenshots 1440/1280 (`workshop-chrome-layout.spec.ts`) и прогнать sticky/objects specs на живом `@affine/web`.
 3. Не подключать npm Miro «на посмотреть в бандле».

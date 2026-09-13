@@ -14,18 +14,26 @@ export {
   helloWidget,
 } from './blocks/hello';
 export {
+  RecordCardBlockSchema,
+  RecordCardBlockSchemaExtension,
+  recordCardWidget,
+} from './blocks/record-card';
+export {
   SketchBlockSchema,
   SketchBlockSchemaExtension,
   sketchWidget,
 } from './blocks/sketch';
 export {
   contrastRatio,
+  createStickyNoteProps,
   MOSAIC_ACCENT,
   MOSAIC_CSS_VAR,
   MOSAIC_HIT,
   MOSAIC_HIT_COMFORTABLE,
   MOSAIC_ICON,
+  MOSAIC_STICKY_KIND,
   MOSAIC_STICKY_SWATCH_IDS,
+  MOSAIC_STICKY_TOOL,
   MOSAIC_TEXT_CONTRAST_AA,
   mosaicChromeIcon,
   mosaicChromeIconButton,
@@ -60,6 +68,7 @@ export { WHITEBOARD_FLAVOURS, WHITEBOARD_SURFACE_CHILDREN } from './const';
 export {
   BOARD_WIDGET_SIZE,
   CHART_WIDGET_SIZE,
+  RECORD_CARD_WIDGET_SIZE,
   SKETCH_WIDGET_SIZE,
   WHITEBOARD_LOD,
 } from './const';

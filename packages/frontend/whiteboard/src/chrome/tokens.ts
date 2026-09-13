@@ -15,10 +15,14 @@ export const MOSAIC_ACCENT_DARK = '#3cb8bd';
 export const MOSAIC_ACCENT_HOVER_DARK = '#4ec8cc';
 export const MOSAIC_ACCENT_PRESSED_DARK = '#2aa8ad';
 
-export const MOSAIC_PAPER_VALUE = 'var(--affine-background-overlay-panel-color)';
+export const MOSAIC_PAPER_VALUE =
+  'var(--affine-background-overlay-panel-color)';
 export const MOSAIC_CHROME_RADIUS_PX = 8;
-export const MOSAIC_CHROME_BORDER_VALUE = '1px solid var(--affine-border-color)';
+export const MOSAIC_CHROME_BORDER_VALUE =
+  '1px solid var(--affine-border-color)';
 export const MOSAIC_CHROME_SHADOW_VALUE = 'var(--affine-shadow-2)';
+export const MOSAIC_APP_CARD_SHADOW_VALUE = 'var(--affine-shadow-1)';
+export const MOSAIC_FRAME_TITLE_HEIGHT = 24;
 
 export const MOSAIC_HIT = 32;
 export const MOSAIC_HIT_COMFORTABLE = 36;
@@ -73,6 +77,8 @@ export const MOSAIC_CSS_VAR = {
   chromeRadius: '--mosaic-chrome-radius',
   chromeBorder: '--mosaic-chrome-border',
   chromeShadow: '--mosaic-chrome-shadow',
+  appCardShadow: '--mosaic-app-card-shadow',
+  frameTitleHeight: '--mosaic-frame-title-height',
   hit: '--mosaic-hit',
   hitComfortable: '--mosaic-hit-comfortable',
   icon: '--mosaic-icon',
@@ -155,7 +161,10 @@ export function stickyTextContrast(
   id: MosaicStickySwatchId,
   theme: MosaicChromeTheme
 ): number {
-  return contrastRatio(stickyInkForTheme(theme), stickyPaperForTheme(id, theme));
+  return contrastRatio(
+    stickyInkForTheme(theme),
+    stickyPaperForTheme(id, theme)
+  );
 }
 
 export function lightChromeVars(): Record<string, string> {
@@ -168,6 +177,8 @@ export function lightChromeVars(): Record<string, string> {
     [MOSAIC_CSS_VAR.chromeRadius]: `${MOSAIC_CHROME_RADIUS_PX}px`,
     [MOSAIC_CSS_VAR.chromeBorder]: MOSAIC_CHROME_BORDER_VALUE,
     [MOSAIC_CSS_VAR.chromeShadow]: MOSAIC_CHROME_SHADOW_VALUE,
+    [MOSAIC_CSS_VAR.appCardShadow]: MOSAIC_APP_CARD_SHADOW_VALUE,
+    [MOSAIC_CSS_VAR.frameTitleHeight]: `${MOSAIC_FRAME_TITLE_HEIGHT}px`,
     [MOSAIC_CSS_VAR.hit]: `${MOSAIC_HIT}px`,
     [MOSAIC_CSS_VAR.hitComfortable]: `${MOSAIC_HIT_COMFORTABLE}px`,
     [MOSAIC_CSS_VAR.icon]: `${MOSAIC_ICON}px`,

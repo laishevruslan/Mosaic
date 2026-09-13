@@ -49,7 +49,8 @@ function isWidgetLayout(layout: BlockLayout): layout is WhiteboardWidgetLayout {
     layout.type === WHITEBOARD_FLAVOURS.hello ||
     layout.type === WHITEBOARD_FLAVOURS.chart ||
     layout.type === WHITEBOARD_FLAVOURS.sketch ||
-    layout.type === WHITEBOARD_FLAVOURS.board
+    layout.type === WHITEBOARD_FLAVOURS.board ||
+    layout.type === WHITEBOARD_FLAVOURS.recordCard
   );
 }
 
@@ -123,6 +124,10 @@ export const WhiteboardLayoutPainterExtensions = [
   ),
   BlockLayoutPainterExtension(
     WHITEBOARD_FLAVOURS.board,
+    WhiteboardWidgetPainter
+  ),
+  BlockLayoutPainterExtension(
+    WHITEBOARD_FLAVOURS.recordCard,
     WhiteboardWidgetPainter
   ),
 ];

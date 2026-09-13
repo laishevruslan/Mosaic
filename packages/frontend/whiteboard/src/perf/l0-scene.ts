@@ -33,6 +33,7 @@ const FILLS: Record<string, [number, number, number, number]> = {
   [WHITEBOARD_FLAVOURS.chart]: [0.58, 0.77, 0.99, 1],
   [WHITEBOARD_FLAVOURS.sketch]: [0.99, 0.83, 0.3, 1],
   [WHITEBOARD_FLAVOURS.board]: [0.53, 0.94, 0.67, 1],
+  [WHITEBOARD_FLAVOURS.recordCard]: [0.96, 0.96, 0.97, 1],
   'affine:note': [0.99, 0.94, 0.54, 1],
   'affine:frame': [0.88, 0.91, 1, 1],
   'affine:image': [0.87, 0.87, 0.88, 1],

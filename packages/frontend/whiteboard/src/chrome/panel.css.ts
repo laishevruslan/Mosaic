@@ -87,18 +87,28 @@ export const mosaicStickySwatch = styleVariants({
     mosaicStickySwatchBase,
     { background: 'var(--mosaic-sticky-butter)' },
   ],
-  peach: [
-    mosaicStickySwatchBase,
-    { background: 'var(--mosaic-sticky-peach)' },
-  ],
-  blush: [
-    mosaicStickySwatchBase,
-    { background: 'var(--mosaic-sticky-blush)' },
-  ],
+  peach: [mosaicStickySwatchBase, { background: 'var(--mosaic-sticky-peach)' }],
+  blush: [mosaicStickySwatchBase, { background: 'var(--mosaic-sticky-blush)' }],
   mint: [mosaicStickySwatchBase, { background: 'var(--mosaic-sticky-mint)' }],
-  lilac: [
-    mosaicStickySwatchBase,
-    { background: 'var(--mosaic-sticky-lilac)' },
-  ],
+  lilac: [mosaicStickySwatchBase, { background: 'var(--mosaic-sticky-lilac)' }],
   fog: [mosaicStickySwatchBase, { background: 'var(--mosaic-sticky-fog)' }],
 } satisfies Record<MosaicStickySwatchId, unknown>);
+
+export const mosaicTagChip = style({
+  boxSizing: 'border-box',
+  display: 'inline-flex',
+  alignItems: 'center',
+  maxWidth: 96,
+  height: 20,
+  padding: '0 6px',
+  borderRadius: 999,
+  border: '1px solid var(--affine-border-color)',
+  background: 'var(--tag-color, var(--affine-tag-blue))',
+  color: 'var(--affine-text-primary-color)',
+  fontFamily: 'var(--mosaic-font-ui)',
+  fontSize: 11,
+  lineHeight: '18px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
