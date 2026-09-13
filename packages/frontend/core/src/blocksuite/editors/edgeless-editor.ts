@@ -43,15 +43,21 @@ export class EdgelessEditor extends SignalWatcher(
     }
   }
 
+  private bindStd() {
+    if (!this.doc) return;
+    this.std = new BlockStdScope({
+      store: this.doc,
+      extensions: this.specs ?? [],
+    });
+  }
+
   override connectedCallback() {
+    // Bind before super() so SignalWatcher's first update never sees a missing std.
+    this.bindStd();
     super.connectedCallback();
     this._disposables.add(
       this.doc.slots.rootAdded.subscribe(() => this.requestUpdate())
     );
-    this.std = new BlockStdScope({
-      store: this.doc,
-      extensions: this.specs,
-    });
   }
 
   override async getUpdateComplete(): Promise<boolean> {
@@ -61,10 +67,11 @@ export class EdgelessEditor extends SignalWatcher(
   }
 
   override render() {
-    if (!this.doc.root) return nothing;
-
+    if (!this.doc?.root) return nothing;
     const std = this.std;
-    const theme = std.get(ThemeProvider).edgeless$.value;
+    if (!std) return nothing;
+
+    const theme = std.getOptional(ThemeProvider)?.edgeless$.value;
     return html`
       <div class="affine-edgeless-viewport" data-theme=${theme}>
         ${guard([std], () => std.render())}
@@ -78,12 +85,9 @@ export class EdgelessEditor extends SignalWatcher(
     super.willUpdate(changedProperties);
     if (
       this.hasUpdated && // skip the first update
-      changedProperties.has('doc')
+      (changedProperties.has('doc') || changedProperties.has('specs'))
     ) {
-      this.std = new BlockStdScope({
-        store: this.doc,
-        extensions: this.specs,
-      });
+      this.bindStd();
     }
   }
 

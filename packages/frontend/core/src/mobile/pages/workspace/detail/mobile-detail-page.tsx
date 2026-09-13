@@ -164,7 +164,7 @@ const DetailPageImpl = ({
         server.baseUrl
       ).toString();
 
-      editorContainer.std.clipboard.use(
+      editorContainer.std?.clipboard?.use(
         customImageProxyMiddleware(imageProxyUrl)
       );
       editorContainer.doc

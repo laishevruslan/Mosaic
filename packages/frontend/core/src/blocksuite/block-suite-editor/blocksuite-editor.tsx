@@ -220,12 +220,23 @@ const BlockSuiteEditorImpl = ({
       server.baseUrl
     ).toString();
 
-    editor.std.clipboard.use(customImageProxyMiddleware(imageProxyUrl));
-    page.get(ImageProxyService).setImageProxyURL(imageProxyUrl);
+    const applyImageProxy = () => {
+      const clipboard = editor.std?.clipboard;
+      if (!clipboard) {
+        return false;
+      }
+      clipboard.use(customImageProxyMiddleware(imageProxyUrl));
+      page.get(ImageProxyService).setImageProxyURL(imageProxyUrl);
+      return true;
+    };
 
-    editor.updateComplete
+    // Lit hosts are constructed disconnected (see createComponent) and only
+    // bind BlockStdScope in connectedCallback. Wait for that before std.clipboard.
+    void Promise.resolve(editor.updateComplete)
       .then(() => {
-        if (onEditorReady && !canceled) {
+        if (canceled) return;
+        applyImageProxy();
+        if (onEditorReady && !canceled && editor.std) {
           const dispose = onEditorReady(editor);
           if (dispose) {
             disposableGroup.add(dispose);

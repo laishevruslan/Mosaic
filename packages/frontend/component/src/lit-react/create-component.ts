@@ -274,16 +274,6 @@ export const createComponent = <
     };
     const elementProps: Record<string, unknown> = {};
 
-    if (elementRef.current === null) {
-      const element = new elementClass();
-      elementRef.current = element;
-      if (typeof ref === 'function') {
-        ref(elementRef.current);
-      } else if (ref) {
-        ref.current = element;
-      }
-    }
-
     for (const [k, v] of Object.entries(props)) {
       if (reservedReactProperties.has(k)) {
         reactProps[k] = v;
@@ -298,14 +288,10 @@ export const createComponent = <
       reactProps[k] = v;
     }
 
-    // This one has no dependency array so it'll run on every re-render.
-    React.useLayoutEffect(() => {
-      if (elementRef.current === null) {
-        return;
-      }
+    const applyElementProps = (element: I) => {
       for (const prop in elementProps) {
         setProperty(
-          elementRef.current,
+          element,
           prop,
           // @ts-expect-error: prop is a key of props
           props[prop],
@@ -320,22 +306,35 @@ export const createComponent = <
           events
         );
       }
-      // Note, the spirit of React might be to "unset" any old values that
-      // are no longer included; however, there's no reasonable value to set
-      // them to so we just leave the previous state as is.
+    };
 
-      prevPropsRef.current = props;
-    });
+    if (elementRef.current === null) {
+      const element = new elementClass();
+      elementRef.current = element;
+      // Set Lit props before exposing the instance so connectedCallback
+      // (and any parent that reads the ref) sees `doc` / `specs`.
+      applyElementProps(element);
+      if (typeof ref === 'function') {
+        ref(elementRef.current);
+      } else if (ref) {
+        ref.current = element;
+      }
+    }
 
+    // Apply props and attach in one layout pass so BlockStdScope is created
+    // with the current specs before React effects read `element.std`.
     React.useLayoutEffect(() => {
       const container = containerRef.current;
       const element = elementRef.current;
-      if (!container || !element) {
+      if (element === null) {
         return;
       }
-      if (element.isConnected) return;
-      container.append(element);
-    }, []);
+      applyElementProps(element);
+      prevPropsRef.current = props;
+      if (container && !element.isConnected) {
+        container.append(element);
+      }
+    });
 
     return React.createElement(tagName, {
       ...reactProps,
