@@ -198,7 +198,7 @@ export const platformTypeDefs = /* GraphQL */ `
   }
 
   extend type UserType {
-    copilot: Copilot!
+    copilot(workspaceId: String): Copilot!
   }
 
   extend type WorkspaceType {
@@ -267,7 +267,7 @@ function gqlHistory(
     sessionId: session.id,
     workspaceId: session.workspaceId,
     docId: session.docId,
-    parentSessionId: null,
+    parentSessionId: session.parentSessionId,
     promptName: session.promptName,
     action: null,
     pinned: session.pinned,
@@ -276,9 +276,9 @@ function gqlHistory(
       id: message.id,
       role: message.role,
       content: message.content,
-      attachments: null,
+      attachments: message.attachments,
       scopeSnapshot: null,
-      streamObjects: null,
+      streamObjects: message.streamObjects,
       createdAt: message.createdAt,
     })),
     createdAt: session.createdAt,
@@ -313,12 +313,23 @@ export function platformResolvers(opts: PlatformGraphqlOpts) {
 
   return {
     UserType: {
-      copilot: async (parent: { id: string }) => {
+      copilot: async (
+        parent: { id: string },
+        args: { workspaceId?: string | null }
+      ) => {
         const user = await opts.auth.getUserById(parent.id);
         if (!user) {
-          return { quota: { limit: 0, used: 0 } };
+          return {
+            userId: parent.id,
+            workspaceId: args.workspaceId ?? null,
+            quota: { limit: 0, used: 0 },
+          };
         }
-        return { quota: await opts.ai.quota(user) };
+        return {
+          userId: parent.id,
+          workspaceId: args.workspaceId ?? null,
+          quota: await opts.ai.quota(user),
+        };
       },
     },
     WorkspaceType: {
@@ -584,17 +595,20 @@ export function platformResolvers(opts: PlatformGraphqlOpts) {
   };
 }
 
-export function serverConfigFeatures(
+export async function serverConfigFeatures(
   sso: SsoService,
   ai: AiGatewayService,
   envFlags: string[]
-): string[] {
+): Promise<string[]> {
   const features = ['Comment', 'Indexer'];
   if (sso.oauthProviders().length > 0) {
     features.push('OAuth');
   }
   if (ai.enabled) {
     features.push('Copilot');
+  }
+  if (await ai.embeddingAdvertised()) {
+    features.push('CopilotEmbedding');
   }
   for (const flag of envFlags) {
     if (flag === 'Captcha' || flag === 'LocalWorkspace') {

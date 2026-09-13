@@ -43,6 +43,8 @@ import type { AuditEvent, AuditQuery } from '../../domain/audit.js';
 import type {
   CopilotMessageRecord,
   CopilotSessionRecord,
+  CopilotStreamObject,
+  CopilotTranscriptTask,
 } from '../../domain/ai.js';
 import type { OauthAccount } from '../../domain/sso.js';
 import type { SecurityPolicy } from '../../domain/security.js';
@@ -59,7 +61,7 @@ import type {
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc, PublicDocMode } from '../../domain/share.js';
 import { applyMigrations } from './migrate.js';
-import { PostgresE0Store } from './postgres-e0.js';
+import { PostgresE2Store } from './postgres-e2.js';
 
 interface UserRow {
   id: string;
@@ -460,7 +462,7 @@ function paginate<T extends { createdAt: Date; id: string }>(
   };
 }
 
-export class PostgresStore extends PostgresE0Store implements MosaicStore {
+export class PostgresStore extends PostgresE2Store implements MosaicStore {
   readonly kind = 'postgres' as const;
 
   constructor(sql: postgres.Sql) {
@@ -1875,10 +1877,12 @@ export class PostgresStore extends PostgresE0Store implements MosaicStore {
   ): Promise<CopilotSessionRecord> {
     await this.sql`
       INSERT INTO copilot_sessions (
-        id, workspace_id, user_id, doc_id, prompt_name, title, pinned, created_at, updated_at
+        id, workspace_id, user_id, doc_id, prompt_name, title, pinned,
+        parent_session_id, action, created_at, updated_at
       ) VALUES (
         ${session.id}, ${session.workspaceId}, ${session.userId}, ${session.docId},
-        ${session.promptName}, ${session.title}, ${session.pinned}, ${session.createdAt}, ${session.updatedAt}
+        ${session.promptName}, ${session.title}, ${session.pinned},
+        ${session.parentSessionId}, ${session.action}, ${session.createdAt}, ${session.updatedAt}
       )
     `;
     return session;
@@ -1886,7 +1890,8 @@ export class PostgresStore extends PostgresE0Store implements MosaicStore {
 
   async getCopilotSession(id: string): Promise<CopilotSessionRecord | null> {
     const [row] = await this.sql<CopilotSessionRow[]>`
-      SELECT id, workspace_id, user_id, doc_id, prompt_name, title, pinned, created_at, updated_at
+      SELECT id, workspace_id, user_id, doc_id, prompt_name, title, pinned,
+             parent_session_id, action, created_at, updated_at
       FROM copilot_sessions WHERE id = ${id}
     `;
     return row ? mapCopilotSession(row) : null;
@@ -1897,7 +1902,8 @@ export class PostgresStore extends PostgresE0Store implements MosaicStore {
     workspaceId: string
   ): Promise<CopilotSessionRecord[]> {
     const rows = await this.sql<CopilotSessionRow[]>`
-      SELECT id, workspace_id, user_id, doc_id, prompt_name, title, pinned, created_at, updated_at
+      SELECT id, workspace_id, user_id, doc_id, prompt_name, title, pinned,
+             parent_session_id, action, created_at, updated_at
       FROM copilot_sessions WHERE user_id = ${userId} AND workspace_id = ${workspaceId}
       ORDER BY updated_at DESC
     `;
@@ -1911,12 +1917,55 @@ export class PostgresStore extends PostgresE0Store implements MosaicStore {
     return Number(row?.count ?? 0);
   }
 
+  async updateCopilotSession(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotSessionRecord,
+        'docId' | 'pinned' | 'promptName' | 'title' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotSessionRecord> {
+    const current = await this.getCopilotSession(id);
+    if (!current) {
+      throw errors.badRequest('Copilot session not found.');
+    }
+    const next = { ...current, ...patch };
+    await this.sql`
+      UPDATE copilot_sessions SET
+        doc_id = ${next.docId},
+        pinned = ${next.pinned},
+        prompt_name = ${next.promptName},
+        title = ${next.title},
+        updated_at = ${next.updatedAt}
+      WHERE id = ${id}
+    `;
+    return next;
+  }
+
+  async deleteCopilotSessions(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.sql<{ id: string }[]>`
+      DELETE FROM copilot_sessions WHERE id IN ${this.sql(ids)}
+      RETURNING id
+    `;
+    return rows.map(row => row.id);
+  }
+
   async appendCopilotMessage(
     message: CopilotMessageRecord
   ): Promise<CopilotMessageRecord> {
     await this.sql`
-      INSERT INTO copilot_messages (id, session_id, role, content, created_at)
-      VALUES (${message.id}, ${message.sessionId}, ${message.role}, ${message.content}, ${message.createdAt})
+      INSERT INTO copilot_messages (
+        id, session_id, role, content, attachments, stream_objects, created_at
+      ) VALUES (
+        ${message.id}, ${message.sessionId}, ${message.role}, ${message.content},
+        ${message.attachments ? this.sql.json(asJson(message.attachments)) : null},
+        ${message.streamObjects ? this.sql.json(asJson(message.streamObjects)) : null},
+        ${message.createdAt}
+      )
     `;
     return message;
   }
@@ -1925,11 +1974,88 @@ export class PostgresStore extends PostgresE0Store implements MosaicStore {
     sessionId: string
   ): Promise<CopilotMessageRecord[]> {
     const rows = await this.sql<CopilotMessageRow[]>`
-      SELECT id, session_id, role, content, created_at
+      SELECT id, session_id, role, content, attachments, stream_objects, created_at
       FROM copilot_messages WHERE session_id = ${sessionId}
       ORDER BY created_at ASC
     `;
     return rows.map(mapCopilotMessage);
+  }
+
+  async addCopilotTokenUsage(userId: string, tokens: number): Promise<number> {
+    const [row] = await this.sql<{ used: string }[]>`
+      INSERT INTO copilot_token_usage (user_id, used)
+      VALUES (${userId}, ${tokens})
+      ON CONFLICT (user_id) DO UPDATE SET used = copilot_token_usage.used + EXCLUDED.used
+      RETURNING used::text AS used
+    `;
+    return Number(row?.used ?? tokens);
+  }
+
+  async getCopilotTokenUsage(userId: string): Promise<number> {
+    const [row] = await this.sql<{ used: string }[]>`
+      SELECT used::text AS used FROM copilot_token_usage WHERE user_id = ${userId}
+    `;
+    return Number(row?.used ?? 0);
+  }
+
+  async createTranscriptTask(
+    task: CopilotTranscriptTask
+  ): Promise<CopilotTranscriptTask> {
+    await this.sql`
+      INSERT INTO copilot_transcripts (
+        id, workspace_id, user_id, blob_id, status, title, summary, transcript,
+        created_at, updated_at
+      ) VALUES (
+        ${task.id}, ${task.workspaceId}, ${task.userId}, ${task.blobId}, ${task.status},
+        ${task.title}, ${task.summary}, ${task.transcript}, ${task.createdAt}, ${task.updatedAt}
+      )
+    `;
+    return task;
+  }
+
+  async getTranscriptTask(id: string): Promise<CopilotTranscriptTask | null> {
+    const [row] = await this.sql<TranscriptRow[]>`
+      SELECT * FROM copilot_transcripts WHERE id = ${id}
+    `;
+    return row ? mapTranscript(row) : null;
+  }
+
+  async findTranscriptTaskByBlob(
+    workspaceId: string,
+    blobId: string
+  ): Promise<CopilotTranscriptTask | null> {
+    const [row] = await this.sql<TranscriptRow[]>`
+      SELECT * FROM copilot_transcripts
+      WHERE workspace_id = ${workspaceId} AND blob_id = ${blobId}
+      ORDER BY created_at DESC LIMIT 1
+    `;
+    return row ? mapTranscript(row) : null;
+  }
+
+  async updateTranscriptTask(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotTranscriptTask,
+        'status' | 'title' | 'summary' | 'transcript' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotTranscriptTask> {
+    const current = await this.getTranscriptTask(id);
+    if (!current) {
+      throw errors.badRequest('Transcript task not found.');
+    }
+    const next = { ...current, ...patch };
+    await this.sql`
+      UPDATE copilot_transcripts SET
+        status = ${next.status},
+        title = ${next.title},
+        summary = ${next.summary},
+        transcript = ${next.transcript},
+        updated_at = ${next.updatedAt}
+      WHERE id = ${id}
+    `;
+    return next;
   }
 
   async getSetting(key: string): Promise<unknown | null> {
@@ -2250,6 +2376,8 @@ interface CopilotSessionRow {
   prompt_name: string;
   title: string | null;
   pinned: boolean;
+  parent_session_id: string | null;
+  action: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -2259,7 +2387,22 @@ interface CopilotMessageRow {
   session_id: string;
   role: CopilotMessageRecord['role'];
   content: string;
+  attachments: string[] | null;
+  stream_objects: CopilotStreamObject[] | null;
   created_at: Date;
+}
+
+interface TranscriptRow {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  blob_id: string | null;
+  status: CopilotTranscriptTask['status'];
+  title: string | null;
+  summary: string | null;
+  transcript: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 function mapOauth(row: OauthRow): OauthAccount {
@@ -2323,6 +2466,8 @@ function mapCopilotSession(row: CopilotSessionRow): CopilotSessionRecord {
     promptName: row.prompt_name,
     title: row.title,
     pinned: row.pinned,
+    parentSessionId: row.parent_session_id,
+    action: row.action,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -2334,7 +2479,24 @@ function mapCopilotMessage(row: CopilotMessageRow): CopilotMessageRecord {
     sessionId: row.session_id,
     role: row.role,
     content: row.content,
+    attachments: row.attachments,
+    streamObjects: row.stream_objects,
     createdAt: row.created_at,
+  };
+}
+
+function mapTranscript(row: TranscriptRow): CopilotTranscriptTask {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    userId: row.user_id,
+    blobId: row.blob_id,
+    status: row.status,
+    title: row.title,
+    summary: row.summary,
+    transcript: row.transcript,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

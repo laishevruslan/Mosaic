@@ -9,6 +9,7 @@ import type { CommentService } from '../../application/comment-service.js';
 import type { DocService } from '../../application/doc-service.js';
 import type { MembershipService } from '../../application/membership-service.js';
 import type { NotificationService } from '../../application/notification-service.js';
+import type { EmbeddingService } from '../../application/embedding-service.js';
 import type { ShareService } from '../../application/share-service.js';
 import type { AppConfig } from '../../config/env.js';
 import type { DocLifecycle } from '../../domain/doc.js';
@@ -142,6 +143,7 @@ export const socketPlugin = fp<{
   comments: CommentService;
   blobs: BlobService;
   notifications: NotificationService;
+  embeddings?: EmbeddingService;
   redis?: RedisPort | null;
   config: AppConfig;
   metrics: HttpMetrics;
@@ -229,6 +231,7 @@ function bindSocket(
     comments: CommentService;
     blobs: BlobService;
     notifications: NotificationService;
+    embeddings?: EmbeddingService;
     config: AppConfig;
     metrics: HttpMetrics;
   }
@@ -508,6 +511,7 @@ function bindSocket(
           comments: opts.comments,
           blobs: opts.blobs,
           notifications: opts.notifications,
+          ...(opts.embeddings ? { embeddings: opts.embeddings } : {}),
         });
       });
     }

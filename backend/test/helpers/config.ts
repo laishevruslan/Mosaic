@@ -64,6 +64,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     MOSAIC_AI_BASE_URL: 'https://api.openai.com/v1',
     MOSAIC_AI_API_KEY: undefined,
     MOSAIC_AI_MODEL: 'gpt-4o-mini',
+    MOSAIC_AI_QUOTA_TOKENS: undefined,
+    MOSAIC_MCP_WRITE_ENABLED: undefined,
     MOSAIC_SIEM_WEBHOOK_URL: undefined,
     MOSAIC_JIRA_BASE_URL: undefined,
     MOSAIC_JIRA_EMAIL: undefined,

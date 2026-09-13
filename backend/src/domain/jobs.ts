@@ -6,6 +6,8 @@ export const JOB_NAMES = [
   'index.document',
   'embed.document',
   'audit.purge',
+  'copilot.transcript',
+  'calendar.sync',
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];

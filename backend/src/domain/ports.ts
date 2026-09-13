@@ -1,5 +1,25 @@
 import type { AuditEvent, AuditQuery } from './audit.js';
-import type { CopilotMessageRecord, CopilotSessionRecord } from './ai.js';
+import type {
+  CopilotMessageRecord,
+  CopilotSessionRecord,
+  CopilotTranscriptTask,
+} from './ai.js';
+import type { ApiToken } from './api-token.js';
+import type { ByokLease, ByokProfile, ByokUsagePoint } from './byok.js';
+import type {
+  CalendarAccount,
+  CalendarEvent,
+  CalendarSubscription,
+  WorkspaceCalendar,
+  WorkspaceCalendarItem,
+} from './calendar.js';
+import type {
+  EmbeddingArtifact,
+  EmbeddingChunk,
+  EmbeddingIgnoredDoc,
+  EmbeddingProgress,
+} from './embedding.js';
+import type { McpCredential } from './mcp.js';
 import type {
   BlobUploadPart,
   BlobUploadSession,
@@ -350,10 +370,164 @@ export interface AiStore {
     workspaceId: string
   ): Promise<CopilotSessionRecord[]>;
   countCopilotSessions(userId: string): Promise<number>;
+  updateCopilotSession(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotSessionRecord,
+        'docId' | 'pinned' | 'promptName' | 'title' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotSessionRecord>;
+  deleteCopilotSessions(ids: string[]): Promise<string[]>;
   appendCopilotMessage(
     message: CopilotMessageRecord
   ): Promise<CopilotMessageRecord>;
   listCopilotMessages(sessionId: string): Promise<CopilotMessageRecord[]>;
+  addCopilotTokenUsage(userId: string, tokens: number): Promise<number>;
+  getCopilotTokenUsage(userId: string): Promise<number>;
+  createTranscriptTask(
+    task: CopilotTranscriptTask
+  ): Promise<CopilotTranscriptTask>;
+  getTranscriptTask(id: string): Promise<CopilotTranscriptTask | null>;
+  findTranscriptTaskByBlob(
+    workspaceId: string,
+    blobId: string
+  ): Promise<CopilotTranscriptTask | null>;
+  updateTranscriptTask(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotTranscriptTask,
+        'status' | 'title' | 'summary' | 'transcript' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotTranscriptTask>;
+}
+
+export interface McpStore {
+  createMcpCredential(credential: McpCredential): Promise<McpCredential>;
+  getMcpCredential(id: string): Promise<McpCredential | null>;
+  findMcpCredentialByHash(tokenHash: string): Promise<McpCredential | null>;
+  listMcpCredentials(workspaceId: string): Promise<McpCredential[]>;
+  updateMcpCredential(
+    id: string,
+    patch: Partial<
+      Pick<
+        McpCredential,
+        | 'tokenHash'
+        | 'fingerprint'
+        | 'expiresAt'
+        | 'lastUsedAt'
+        | 'revokedAt'
+        | 'graceEndsAt'
+      >
+    >
+  ): Promise<McpCredential>;
+}
+
+export interface CalendarStore {
+  createCalendarAccount(account: CalendarAccount): Promise<CalendarAccount>;
+  getCalendarAccount(id: string): Promise<CalendarAccount | null>;
+  listCalendarAccounts(userId: string): Promise<CalendarAccount[]>;
+  updateCalendarAccount(
+    id: string,
+    patch: Partial<
+      Pick<
+        CalendarAccount,
+        | 'displayName'
+        | 'email'
+        | 'status'
+        | 'lastError'
+        | 'refreshIntervalMinutes'
+        | 'tokenCipher'
+        | 'updatedAt'
+      >
+    >
+  ): Promise<CalendarAccount>;
+  deleteCalendarAccount(id: string): Promise<boolean>;
+  createCalendarSubscription(
+    sub: CalendarSubscription
+  ): Promise<CalendarSubscription>;
+  listCalendarSubscriptions(
+    accountId: string
+  ): Promise<CalendarSubscription[]>;
+  getCalendarSubscription(id: string): Promise<CalendarSubscription | null>;
+  upsertCalendarEvent(event: CalendarEvent): Promise<CalendarEvent>;
+  listCalendarEvents(
+    subscriptionId: string,
+    from: Date,
+    to: Date
+  ): Promise<CalendarEvent[]>;
+  getWorkspaceCalendar(
+    workspaceId: string
+  ): Promise<WorkspaceCalendar | null>;
+  upsertWorkspaceCalendar(
+    calendar: WorkspaceCalendar
+  ): Promise<WorkspaceCalendar>;
+  replaceWorkspaceCalendarItems(
+    workspaceCalendarId: string,
+    items: WorkspaceCalendarItem[]
+  ): Promise<WorkspaceCalendarItem[]>;
+  listWorkspaceCalendarItems(
+    workspaceCalendarId: string
+  ): Promise<WorkspaceCalendarItem[]>;
+}
+
+export interface EmbeddingStore {
+  replaceEmbeddingChunks(
+    workspaceId: string,
+    docId: string,
+    chunks: EmbeddingChunk[]
+  ): Promise<void>;
+  listEmbeddingChunks(workspaceId: string): Promise<EmbeddingChunk[]>;
+  countEmbeddingChunks(): Promise<number>;
+  addIgnoredDocs(docs: EmbeddingIgnoredDoc[]): Promise<number>;
+  removeIgnoredDocs(workspaceId: string, docIds: string[]): Promise<number>;
+  listIgnoredDocs(workspaceId: string): Promise<EmbeddingIgnoredDoc[]>;
+  isIgnoredDoc(workspaceId: string, docId: string): Promise<boolean>;
+  createArtifact(artifact: EmbeddingArtifact): Promise<EmbeddingArtifact>;
+  getArtifact(artifactId: string): Promise<EmbeddingArtifact | null>;
+  listArtifacts(workspaceId: string): Promise<EmbeddingArtifact[]>;
+  deleteArtifact(artifactId: string): Promise<boolean>;
+  getEmbeddingProgress(workspaceId: string): Promise<EmbeddingProgress>;
+  setEmbeddingProgress(progress: EmbeddingProgress): Promise<void>;
+}
+
+export interface ByokStore {
+  createByokProfile(profile: ByokProfile): Promise<ByokProfile>;
+  getByokProfile(profileId: string): Promise<ByokProfile | null>;
+  listByokProfiles(workspaceId: string): Promise<ByokProfile[]>;
+  updateByokProfile(
+    profileId: string,
+    patch: Partial<
+      Omit<ByokProfile, 'profileId' | 'workspaceId' | 'createdAt'>
+    >
+  ): Promise<ByokProfile>;
+  deleteByokProfile(profileId: string): Promise<boolean>;
+  createByokLease(lease: ByokLease): Promise<ByokLease>;
+  addByokUsage(
+    workspaceId: string,
+    date: Date,
+    featureKind: string,
+    tokens: number
+  ): Promise<void>;
+  listByokUsage(
+    workspaceId: string,
+    from: Date,
+    to: Date
+  ): Promise<ByokUsagePoint[]>;
+}
+
+export interface ApiTokenStore {
+  createApiToken(token: ApiToken): Promise<ApiToken>;
+  getApiToken(id: string): Promise<ApiToken | null>;
+  findApiTokenByHash(tokenHash: string): Promise<ApiToken | null>;
+  listApiTokens(userId: string): Promise<ApiToken[]>;
+  updateApiToken(
+    id: string,
+    patch: Partial<Pick<ApiToken, 'lastUsedAt' | 'revokedAt'>>
+  ): Promise<ApiToken>;
 }
 
 export interface InstanceSettingsStore {
@@ -549,6 +723,11 @@ export interface MosaicStore
     SecurityPolicyStore,
     WebhookStore,
     AiStore,
+    McpStore,
+    CalendarStore,
+    EmbeddingStore,
+    ByokStore,
+    ApiTokenStore,
     InstanceSettingsStore,
     NotificationStore,
     MailOutboxStore,

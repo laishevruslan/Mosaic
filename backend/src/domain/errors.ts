@@ -185,6 +185,17 @@ export const errors = {
       'ACTION_FORBIDDEN',
       'AI gateway is not configured. Set MOSAIC_AI_API_KEY (BYOK).'
     ),
+  copilotQuotaExceeded: () =>
+    err(
+      429,
+      'TOO_MANY_REQUEST',
+      'Copilot token quota exceeded for this user.'
+    ),
+  mcpCredentialNotFound: () =>
+    err(404, 'NOT_FOUND', 'MCP credential not found.'),
+  calendarAccountNotFound: () =>
+    err(404, 'NOT_FOUND', 'Calendar account not found.'),
+  apiTokenNotFound: () => err(404, 'NOT_FOUND', 'API token not found.'),
   webhookNotFound: () => err(404, 'NOT_FOUND', 'Webhook not found.'),
   notificationNotFound: () =>
     err(404, 'NOTIFICATION_NOT_FOUND', 'Notification not found.'),

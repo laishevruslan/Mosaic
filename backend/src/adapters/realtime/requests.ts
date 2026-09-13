@@ -3,6 +3,7 @@ import type { BlobService } from '../../application/blob-service.js';
 import type { CommentService } from '../../application/comment-service.js';
 import type { MembershipService } from '../../application/membership-service.js';
 import type { NotificationService } from '../../application/notification-service.js';
+import type { EmbeddingService } from '../../application/embedding-service.js';
 import type { ShareService } from '../../application/share-service.js';
 import { errors } from '../../domain/errors.js';
 import type { User } from '../../domain/identity.js';
@@ -16,6 +17,7 @@ export interface RealtimeServices {
   comments: CommentService;
   blobs: BlobService;
   notifications: NotificationService;
+  embeddings?: EmbeddingService;
 }
 
 export const REALTIME_TOPICS = new Set([
@@ -169,8 +171,12 @@ export async function handleRealtimeRequest(
       };
     }
     case 'workspace.embedding.progress.get': {
-      stringArg(input, 'workspaceId');
-      return { total: 0, embedded: 0 };
+      const workspaceId = stringArg(input, 'workspaceId');
+      await services.members.accessSnapshot(user, workspaceId);
+      if (!services.embeddings) {
+        return { total: 0, embedded: 0 };
+      }
+      return services.embeddings.progress(workspaceId);
     }
     default:
       throw errors.actionForbidden(

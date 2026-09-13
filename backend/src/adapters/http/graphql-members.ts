@@ -406,6 +406,7 @@ export function membersResolvers(opts: {
             enableAi?: boolean | null;
             enableSharing?: boolean | null;
             enableUrlPreview?: boolean | null;
+            enableDocEmbedding?: boolean | null;
           };
         },
         ctx: { request?: FastifyRequest }
@@ -424,6 +425,9 @@ export function membersResolvers(opts: {
               : {}),
             ...(args.input.enableUrlPreview != null
               ? { enableUrlPreview: args.input.enableUrlPreview }
+              : {}),
+            ...(args.input.enableDocEmbedding != null
+              ? { enableDocEmbedding: args.input.enableDocEmbedding }
               : {}),
           };
           if (Object.keys(patch).length === 0) {
@@ -444,6 +448,7 @@ export function membersResolvers(opts: {
             enableSharing: workspace.enableSharing,
             enableUrlPreview: workspace.enableUrlPreview,
             enableAi: workspace.enableAi,
+            enableDocEmbedding: workspace.enableDocEmbedding,
             owner: owner
               ? {
                   id: owner.id,

@@ -38,6 +38,7 @@ import type { AuditEvent, AuditQuery } from '../../domain/audit.js';
 import type {
   CopilotMessageRecord,
   CopilotSessionRecord,
+  CopilotTranscriptTask,
 } from '../../domain/ai.js';
 import type { OauthAccount } from '../../domain/sso.js';
 import type { SecurityPolicy } from '../../domain/security.js';
@@ -50,7 +51,7 @@ import type {
 } from '../../domain/notify.js';
 import type { MosaicStore } from '../../domain/ports.js';
 import type { PublicDoc } from '../../domain/share.js';
-import { MemoryE0Store } from './e0-memory.js';
+import { MemoryE2Store } from './e2-memory.js';
 
 function cloneUser(user: User): User {
   return {
@@ -89,7 +90,7 @@ function cloneSession(session: Session): Session {
   };
 }
 
-export class MemoryStore extends MemoryE0Store implements MosaicStore {
+export class MemoryStore extends MemoryE2Store implements MosaicStore {
   readonly kind = 'memory' as const;
 
   private readonly users = new Map<string, User>();
@@ -117,6 +118,8 @@ export class MemoryStore extends MemoryE0Store implements MosaicStore {
   private readonly webhooks = new Map<string, WorkspaceWebhook>();
   private readonly copilotSessions = new Map<string, CopilotSessionRecord>();
   private readonly copilotMessages = new Map<string, CopilotMessageRecord[]>();
+  private readonly copilotTokenUsage = new Map<string, number>();
+  private readonly transcripts = new Map<string, CopilotTranscriptTask>();
   private readonly settings = new Map<string, unknown>();
   private readonly notifications = new Map<string, NotificationRecord>();
   private readonly notificationPrefs = new Map<string, NotificationPrefs>();
@@ -1289,11 +1292,46 @@ export class MemoryStore extends MemoryE0Store implements MosaicStore {
     ).length;
   }
 
+  async updateCopilotSession(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotSessionRecord,
+        'docId' | 'pinned' | 'promptName' | 'title' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotSessionRecord> {
+    const current = this.copilotSessions.get(id);
+    if (!current) {
+      throw errors.badRequest('Copilot session not found.');
+    }
+    const next = { ...current, ...patch };
+    this.copilotSessions.set(id, next);
+    return { ...next };
+  }
+
+  async deleteCopilotSessions(ids: string[]): Promise<string[]> {
+    const deleted: string[] = [];
+    for (const id of ids) {
+      if (this.copilotSessions.delete(id)) {
+        this.copilotMessages.delete(id);
+        deleted.push(id);
+      }
+    }
+    return deleted;
+  }
+
   async appendCopilotMessage(
     message: CopilotMessageRecord
   ): Promise<CopilotMessageRecord> {
     const list = this.copilotMessages.get(message.sessionId) ?? [];
-    list.push({ ...message });
+    list.push({
+      ...message,
+      attachments: message.attachments ? [...message.attachments] : null,
+      streamObjects: message.streamObjects
+        ? message.streamObjects.map(item => ({ ...item }))
+        : null,
+    });
     this.copilotMessages.set(message.sessionId, list);
     return { ...message };
   }
@@ -1303,7 +1341,63 @@ export class MemoryStore extends MemoryE0Store implements MosaicStore {
   ): Promise<CopilotMessageRecord[]> {
     return (this.copilotMessages.get(sessionId) ?? []).map(message => ({
       ...message,
+      attachments: message.attachments ? [...message.attachments] : null,
+      streamObjects: message.streamObjects
+        ? message.streamObjects.map(item => ({ ...item }))
+        : null,
     }));
+  }
+
+  async addCopilotTokenUsage(userId: string, tokens: number): Promise<number> {
+    const next = (this.copilotTokenUsage.get(userId) ?? 0) + tokens;
+    this.copilotTokenUsage.set(userId, next);
+    return next;
+  }
+
+  async getCopilotTokenUsage(userId: string): Promise<number> {
+    return this.copilotTokenUsage.get(userId) ?? 0;
+  }
+
+  async createTranscriptTask(
+    task: CopilotTranscriptTask
+  ): Promise<CopilotTranscriptTask> {
+    this.transcripts.set(task.id, { ...task });
+    return { ...task };
+  }
+
+  async getTranscriptTask(id: string): Promise<CopilotTranscriptTask | null> {
+    const row = this.transcripts.get(id);
+    return row ? { ...row } : null;
+  }
+
+  async findTranscriptTaskByBlob(
+    workspaceId: string,
+    blobId: string
+  ): Promise<CopilotTranscriptTask | null> {
+    for (const row of this.transcripts.values()) {
+      if (row.workspaceId === workspaceId && row.blobId === blobId) {
+        return { ...row };
+      }
+    }
+    return null;
+  }
+
+  async updateTranscriptTask(
+    id: string,
+    patch: Partial<
+      Pick<
+        CopilotTranscriptTask,
+        'status' | 'title' | 'summary' | 'transcript' | 'updatedAt'
+      >
+    >
+  ): Promise<CopilotTranscriptTask> {
+    const current = this.transcripts.get(id);
+    if (!current) {
+      throw errors.badRequest('Transcript task not found.');
+    }
+    const next = { ...current, ...patch };
+    this.transcripts.set(id, next);
+    return { ...next };
   }
 
   async getSetting(key: string): Promise<unknown | null> {

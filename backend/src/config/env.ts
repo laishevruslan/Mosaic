@@ -137,6 +137,8 @@ const EnvSchema = z.object({
   MOSAIC_AI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   MOSAIC_AI_API_KEY: z.string().optional(),
   MOSAIC_AI_MODEL: z.string().min(1).default('gpt-4o-mini'),
+  MOSAIC_AI_QUOTA_TOKENS: z.coerce.number().int().min(1).optional(),
+  MOSAIC_MCP_WRITE_ENABLED: boolish,
   MOSAIC_SIEM_WEBHOOK_URL: z.string().optional(),
   MOSAIC_JIRA_BASE_URL: z.string().optional(),
   MOSAIC_JIRA_EMAIL: z.string().optional(),

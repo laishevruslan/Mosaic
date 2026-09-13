@@ -9,6 +9,11 @@ import Fastify from 'fastify';
 
 import { AdminUserService } from './application/admin-user-service.js';
 import { AiGatewayService } from './application/ai-gateway.js';
+import { ApiTokenService } from './application/api-token-service.js';
+import { ByokService } from './application/byok-service.js';
+import { CalendarService } from './application/calendar-service.js';
+import { EmbeddingService } from './application/embedding-service.js';
+import { McpService } from './application/mcp-service.js';
 import { AppConfigService } from './application/app-config-service.js';
 import { AuditService } from './application/audit-service.js';
 import { AuthService, type AuthExtras } from './application/auth-service.js';
@@ -42,6 +47,8 @@ import { graphqlPlugin } from './adapters/http/graphql-plugin.js';
 import { healthRoutes } from './adapters/http/health-routes.js';
 import { infoRoutes } from './adapters/http/info-routes.js';
 import { metricsRoutes } from './adapters/http/metrics-routes.js';
+import { apiV2Routes } from './adapters/http/api-v2-routes.js';
+import { mcpRoutes } from './adapters/http/mcp-routes.js';
 import { mfaRoutes } from './adapters/http/mfa-routes.js';
 import { scimRoutes } from './adapters/http/scim-routes.js';
 import { observabilityPlugin } from './adapters/http/observability-plugin.js';
@@ -293,14 +300,53 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     historyLimit: config.DOC_HISTORY_LIMIT,
   });
   const search = new SearchService(store, store);
+  const embeddings = new EmbeddingService(
+    store,
+    store,
+    store,
+    clock,
+    workspaces,
+    jobs,
+    audit
+  );
+  const byok = new ByokService(store, workspaces, clock, audit);
+  const mcp = new McpService(
+    store,
+    store,
+    search,
+    workspaces,
+    clock,
+    config.MOSAIC_PUBLIC_URL,
+    Boolean(config.MOSAIC_MCP_WRITE_ENABLED),
+    audit
+  );
+  const calendar = new CalendarService(
+    store,
+    workspaces,
+    clock,
+    config.MOSAIC_PUBLIC_URL,
+    audit
+  );
+  const tokens = new ApiTokenService(store, clock, audit);
   const aiSettings: AiSettings = {
     baseUrl: config.MOSAIC_AI_BASE_URL,
     model: config.MOSAIC_AI_MODEL,
+    quotaLimit: config.MOSAIC_AI_QUOTA_TOKENS ?? null,
   };
   if (config.MOSAIC_AI_API_KEY) {
     aiSettings.apiKey = config.MOSAIC_AI_API_KEY;
   }
-  const ai = new AiGatewayService(store, clock, aiSettings, fetch, audit);
+  const ai = new AiGatewayService(
+    store,
+    clock,
+    aiSettings,
+    fetch,
+    audit,
+    workspaces,
+    embeddings,
+    byok,
+    jobs
+  );
   const jiraSettings: JiraSettings = {};
   if (config.MOSAIC_JIRA_BASE_URL)
     jiraSettings.baseUrl = config.MOSAIC_JIRA_BASE_URL;
@@ -349,8 +395,14 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   jobHandlers['index.document'] = async () => {
     // Writer lands in E4; the job is recorded so the queue contract is live.
   };
-  jobHandlers['embed.document'] = async () => {
-    // Embeddings land in E2; the job is recorded so the queue contract is live.
+  jobHandlers['embed.document'] = async payload => {
+    await embeddings.handleEmbedJob(payload);
+  };
+  jobHandlers['copilot.transcript'] = async payload => {
+    await ai.handleTranscriptJob(payload);
+  };
+  jobHandlers['calendar.sync'] = async payload => {
+    await calendar.handleSyncJob(payload);
   };
   jobHandlers['audit.purge'] = async () => {
     // Retention filter is already applied on read; partition drop is E0.
@@ -437,6 +489,17 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     signingKeys,
     store,
     config,
+    embeddings,
+    byok,
+    mcp,
+    calendar,
+  });
+  await app.register(mcpRoutes, { auth, workspaces, mcp });
+  await app.register(apiV2Routes, {
+    auth,
+    workspaces,
+    tokens,
+    publicUrl: config.MOSAIC_PUBLIC_URL,
   });
   await app.register(docRoutes, { auth, docs, shares });
   await app.register(blobRoutes, { auth, blobs });
@@ -446,6 +509,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     audit,
     webhooks,
     ai,
+    embeddings,
     jira,
     ...(config.MOSAIC_JIRA_WEBHOOK_SECRET
       ? { jiraWebhookSecret: config.MOSAIC_JIRA_WEBHOOK_SECRET }
@@ -459,6 +523,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
     comments,
     blobs,
     notifications,
+    embeddings,
     ...(redis ? { redis } : {}),
     config,
     metrics,

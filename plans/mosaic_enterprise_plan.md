@@ -745,18 +745,38 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 ### Фаза E2 — AI Gateway, Copilot, MCP, embeddings, Calendar (10–12 недель)
 
-- [ ] AI Gateway: routing, quota, stream, audit
-- [ ] Полный Copilot session/history/message GraphQL
-- [ ] Workspace BYOK profiles
-- [ ] MCP credentials + `GET .../mcp` + read tools
-- [ ] Embedding jobs + `CopilotEmbedding` + progress realtime
-- [ ] Canvas AI (chart + stickers→board)
-- [ ] Calendar Google + CalDAV
-- [ ] Webhook queue + Slack + Jira UI
-- [ ] Whiteboard SDK слой 1
-- [ ] API tokens + OpenAPI v2
+- [x] AI Gateway: routing, quota, stream, audit
+- [x] Полный Copilot session/history/message GraphQL
+- [x] Workspace BYOK profiles
+- [x] MCP credentials + `GET .../mcp` + read tools
+- [x] Embedding jobs + `CopilotEmbedding` + progress realtime
+- [x] Canvas AI (chart + stickers→board)
+- [x] Calendar Google + CalDAV
+- [x] Webhook queue + Slack + Jira UI
+- [x] Whiteboard SDK слой 1
+- [x] API tokens + OpenAPI v2
 
 **Exit:** чат с RAG по своей доске; MCP из IDE читает doc; календарь события в GraphQL.
+
+**Сделано в коде (2026-09-13).** Clean-room `@mosaic/server` (`backend/`): AI Gateway (`promptName` → chat/embed/vision/transcript, `MOSAIC_AI_QUOTA_TOKENS`, audit `ai.session_create` / `ai.completion` / `ai.embed_job`, REST SSE `POST /api/workspaces/:id/ai/chat/stream`). Copilot GraphQL: session create/withHistory/get/list/fork/update/cleanup, chats/histories/messages, quota, routeOptions, ignored-docs, artifacts, transcript submit/get/retry/settle (очередь). `ServerFeature.Copilot` только при `MOSAIC_AI_API_KEY`; `CopilotEmbedding` только после первого успешного index. Workspace BYOK profiles (create/replace/rotate/delete/reorder/probe/lease/usage; credentials base64, не в логах). MCP: GraphQL credentials create/rotate/revoke, `GET /api/workspaces/:id/mcp`, JSON-RPC tools `search` / `read_document` / `list_docs`; write `edit_document` за `MOSAIC_MCP_WRITE_ENABLED`. Embeddings: job chunk Yjs+comments, hash-vectors, RAG в chat, realtime `workspace.embedding.progress.get`, `enableDocEmbedding`. Canvas AI: `POST .../ai/chart` (bar|line|pie|scatter JSON) + существующий `/ai/kanban`. Calendar: `calendarProviders` Google+CalDAV, CalDAV presets + GraphQL events; Google link возвращает URL и сразу stub-account. Webhooks: очередь/retry уже E-Plat; Slack Incoming Webhook JSON если URL `hooks.slack.com`; Jira `GET .../jira` `{ configured }` + существующий REST. Whiteboard SDK слой 1 — WC4 (`@affine/whiteboard` `src/sdk`). API v2: PAT `mosaic_pat_…` scopes `read:docs`/`write:webhooks`/`admin:scim`, `GET /api/v2/workspaces`, `GET /api/v2/openapi.json`. Persistence: memory + Postgres migration `008_e2`. Тесты: `backend/test/e2/ai-platform.test.ts`. GraphQL surface: **129** implemented / **48** wontfix. i18n en+ru: `com.affine.settings.workspace.mcp|calendar|embedding|api-tokens|integrations.*`, chat-panel, BYOK.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы в коде):**
+
+- Live Google Calendar OAuth (consent + token refresh) нет: `linkCalendarAccount` сразу создаёт stub-account; токены base64, не KMS.
+- CalDAV — store + mock ICS/seed event, не живой CalDAV-клиент (Fastmail/Nextcloud PROPFIND).
+- Transcript — queued placeholder, без реального STT.
+- Embeddings — локальные hash-векторы (dim 32), не pgvector/OpenAI embeddings; widget extractors канбана — E4 indexer.
+- Stream — REST SSE (`/ai/chat/stream`), не Yoga multipart GraphQL subscription.
+- Redaction/PII hook перед провайдером — E3 DLP.
+- Slack: только формат Incoming Webhook по URL; нет OAuth, unfurl, mention fan-out.
+- Jira UI: флаг `configured` + существующий REST; нет OAuth, status mapping UI, two-way на `wb:board`.
+- API v2 — срез (tokens + workspaces + OpenAPI); нет `/api/v2/orgs`, `/docs/:id/export`, per-token rate limit.
+- GCloud plugins (metrics/logging/GCS/KMS) — не E2, остаются в «Позже».
+- MCP write tools выключены по умолчанию (`MOSAIC_MCP_WRITE_ENABLED`).
+- Probe BYOK всегда stub-verified, без live вызова провайдера.
+- `i18n.gen.ts` не регенерировался (I18n proxy принимает неизвестные ключи; en.json + ru.json заполнены).
+- Playwright / live dual-browser / реальный IDE MCP client не гонялись.
+- Default-on флаги facilitation/kanban/chrome остаются **false** (E1).
 
 ### Фаза E3 — Guard + a11y (10–12 недель)
 

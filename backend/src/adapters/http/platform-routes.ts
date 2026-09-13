@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { AiGatewayService } from '../../application/ai-gateway.js';
 import type { AuditService } from '../../application/audit-service.js';
 import type { AuthService } from '../../application/auth-service.js';
+import type { EmbeddingService } from '../../application/embedding-service.js';
 import type { JiraService } from '../../application/jira-service.js';
 import type { WebhookService } from '../../application/webhook-service.js';
 import type { WorkspaceService } from '../../application/workspace-service.js';
@@ -19,6 +20,15 @@ const CreateWebhook = z.object({
 
 const Kanban = z.object({
   prompt: z.string().min(1),
+});
+
+const Chart = z.object({
+  prompt: z.string().min(1),
+});
+
+const ChatStream = z.object({
+  sessionId: z.string().min(1),
+  content: z.string().min(1),
 });
 
 const JiraImport = z.object({
@@ -39,6 +49,7 @@ export const platformRoutes = fp<{
   audit: AuditService;
   webhooks: WebhookService;
   ai: AiGatewayService;
+  embeddings: EmbeddingService;
   jira: JiraService;
   jiraWebhookSecret?: string;
 }>(
@@ -104,6 +115,51 @@ export const platformRoutes = fp<{
       await opts.workspaces.requireMember(user, id);
       const body = Kanban.parse(request.body);
       return opts.ai.kanban(body.prompt);
+    });
+
+    app.post('/api/workspaces/:id/ai/embed', async request => {
+      const user = await requireUser(request);
+      const { id } = request.params as { id: string };
+      const body = z.object({ docId: z.string().min(1) }).parse(request.body);
+      await opts.embeddings.enqueueDocument(user, id, body.docId);
+      return { ok: true };
+    });
+
+    app.post('/api/workspaces/:id/ai/chart', async request => {
+      const user = await requireUser(request);
+      const { id } = request.params as { id: string };
+      await opts.workspaces.requireMember(user, id);
+      const body = Chart.parse(request.body);
+      return opts.ai.chart(body.prompt);
+    });
+
+    app.post('/api/workspaces/:id/ai/chat/stream', async (request, reply) => {
+      const user = await requireUser(request);
+      const { id } = request.params as { id: string };
+      await opts.workspaces.requireMember(user, id);
+      const body = ChatStream.parse(request.body);
+      reply.hijack();
+      reply.raw.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      });
+      for await (const event of opts.ai.streamChat(
+        user,
+        body.sessionId,
+        body.content
+      )) {
+        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      reply.raw.write('data: [DONE]\n\n');
+      reply.raw.end();
+    });
+
+    app.get('/api/workspaces/:id/jira', async request => {
+      const user = await requireUser(request);
+      const { id } = request.params as { id: string };
+      await opts.workspaces.requireMember(user, id);
+      return { configured: Boolean(opts.jiraWebhookSecret) };
     });
 
     app.get('/api/workspaces/:id/jira/search', async request => {

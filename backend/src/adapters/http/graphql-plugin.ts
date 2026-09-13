@@ -12,6 +12,10 @@ import fp from 'fastify-plugin';
 
 import type { AuthService } from '../../application/auth-service.js';
 import type { AiGatewayService } from '../../application/ai-gateway.js';
+import type { ByokService } from '../../application/byok-service.js';
+import type { CalendarService } from '../../application/calendar-service.js';
+import type { EmbeddingService } from '../../application/embedding-service.js';
+import type { McpService } from '../../application/mcp-service.js';
 import type { AuditService } from '../../application/audit-service.js';
 import type { BlobService } from '../../application/blob-service.js';
 import type { CommentService } from '../../application/comment-service.js';
@@ -55,6 +59,9 @@ import {
   serverConfigOauthProviders,
 } from './graphql-platform.js';
 import { notifyResolvers, notifyTypeDefs } from './graphql-notify.js';
+import { copilotResolvers, copilotTypeDefs } from './graphql-copilot.js';
+import { calendarResolvers, calendarTypeDefs } from './graphql-calendar.js';
+import { mcpResolvers, mcpTypeDefs } from './graphql-mcp.js';
 import { shareResolvers, shareTypeDefs } from './graphql-share.js';
 
 const graphqlRequest = new AsyncLocalStorage<FastifyRequest>();
@@ -131,6 +138,7 @@ export const coreTypeDefs = /* GraphQL */ `
 
   enum CalendarProviderType {
     Google
+    CalDAV
   }
 
   enum OAuthProviderType {
@@ -299,6 +307,7 @@ function gqlWorkspace(
     enableSharing: boolean;
     enableUrlPreview: boolean;
     enableAi: boolean;
+    enableDocEmbedding?: boolean;
   },
   owner: ReturnType<typeof gqlUser> | null
 ) {
@@ -311,6 +320,7 @@ function gqlWorkspace(
     enableSharing: workspace.enableSharing,
     enableUrlPreview: workspace.enableUrlPreview,
     enableAi: workspace.enableAi,
+    enableDocEmbedding: workspace.enableDocEmbedding ?? false,
     owner,
   };
 }
@@ -337,6 +347,10 @@ export const graphqlPlugin = fp<{
   signingKeys: SigningKeyService;
   store: MosaicStore;
   config: AppConfig;
+  embeddings: EmbeddingService;
+  byok: ByokService;
+  mcp: McpService;
+  calendar: CalendarService;
 }>(
   async (app, opts) => {
     const blob = blobResolvers({
@@ -401,6 +415,24 @@ export const graphqlPlugin = fp<{
       publicUrl: opts.config.MOSAIC_PUBLIC_URL,
       requestOf: httpRequest,
     });
+    const copilot = copilotResolvers({
+      auth: opts.auth,
+      workspaces: opts.workspaces,
+      ai: opts.ai,
+      embeddings: opts.embeddings,
+      byok: opts.byok,
+      requestOf: httpRequest,
+    });
+    const mcp = mcpResolvers({
+      auth: opts.auth,
+      mcp: opts.mcp,
+      requestOf: httpRequest,
+    });
+    const calendar = calendarResolvers({
+      auth: opts.auth,
+      calendar: opts.calendar,
+      requestOf: httpRequest,
+    });
     const schema = createSchema({
       typeDefs: [
         coreTypeDefs,
@@ -409,6 +441,9 @@ export const graphqlPlugin = fp<{
         shareTypeDefs,
         commentsTypeDefs,
         platformTypeDefs,
+        copilotTypeDefs,
+        mcpTypeDefs,
+        calendarTypeDefs,
         notifyTypeDefs,
         adminConfigTypeDefs,
         adminTypeDefs,
@@ -424,14 +459,14 @@ export const graphqlPlugin = fp<{
             version: opts.config.MOSAIC_COMPAT_VERSION,
             baseUrl: opts.config.MOSAIC_PUBLIC_URL,
             name: opts.config.MOSAIC_SERVER_NAME,
-            features: serverConfigFeatures(
+            features: await serverConfigFeatures(
               opts.sso,
               opts.ai,
               opts.config.MOSAIC_FEATURES
             ),
             type: 'Selfhosted',
             initialized: await opts.auth.isInitialized(),
-            calendarProviders: [],
+            calendarProviders: ['Google', 'CalDAV'],
             availableUserFeatures: ['Admin'],
             availableUpgrade: null,
             credentialsRequirement: {
@@ -532,6 +567,7 @@ export const graphqlPlugin = fp<{
           },
           ...members.Query,
           ...platform.Query,
+          ...mcp.Query,
           ...adminConfig.Query,
           ...admin.Query,
         },
@@ -570,6 +606,9 @@ export const graphqlPlugin = fp<{
           ...share.Mutation,
           ...comments.Mutation,
           ...platform.Mutation,
+          ...copilot.Mutation,
+          ...mcp.Mutation,
+          ...calendar.Mutation,
           ...notify.Mutation,
           ...adminConfig.Mutation,
           ...admin.Mutation,
@@ -580,18 +619,27 @@ export const graphqlPlugin = fp<{
           quotaUsage: (parent: { quotaUsage?: { storageQuota: number } }) =>
             parent.quotaUsage ?? { storageQuota: 0 },
           ...platform.UserType,
+          ...calendar.UserType,
           ...notify.UserType,
           ...admin.UserType,
         },
+        Copilot: copilot.Copilot,
+        CopilotWorkspaceConfig: copilot.CopilotWorkspaceConfig,
         UserImportResultType: admin.UserImportResultType,
         AdminWorkspace: admin.AdminWorkspace,
-        ServerConfigType: admin.ServerConfigType,
+        ServerConfigType: {
+          ...admin.ServerConfigType,
+          ...calendar.ServerConfigType,
+        },
+        WorkspaceCalendarObjectType: calendar.WorkspaceCalendarObjectType,
         WorkspaceType: {
           ...blob.WorkspaceType,
           ...members.WorkspaceType,
           ...share.WorkspaceType,
           ...comments.WorkspaceType,
           ...platform.WorkspaceType,
+          ...copilot.WorkspaceType,
+          ...calendar.WorkspaceType,
         },
       },
     });

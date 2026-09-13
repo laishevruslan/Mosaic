@@ -105,9 +105,15 @@ export class WebhookService {
       occurredAt: this.clock.now().toISOString(),
       payload,
     };
-    const body = JSON.stringify(delivery);
     await Promise.all(
       hooks.map(async hook => {
+        const isSlack = hook.url.includes('hooks.slack.com');
+        const body = isSlack
+          ? JSON.stringify({
+              text: `${event} in workspace ${workspaceId}`,
+              mosaic: delivery,
+            })
+          : JSON.stringify(delivery);
         const signature = hmacSha256(hook.secret, body);
         try {
           const response = await this.fetch(hook.url, {
