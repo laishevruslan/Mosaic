@@ -45,6 +45,13 @@ export class EdgelessEditor extends SignalWatcher(
 
   private bindStd() {
     if (!this.doc) return;
+    if (this.std) {
+      try {
+        this.std.unmount();
+      } catch {
+        // Host may not have been rendered yet.
+      }
+    }
     this.std = new BlockStdScope({
       store: this.doc,
       extensions: this.specs ?? [],

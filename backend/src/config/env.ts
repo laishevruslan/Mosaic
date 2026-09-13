@@ -75,7 +75,7 @@ const EnvSchema = z.object({
     .positive()
     .default(30 * 24 * 60 * 60 * 1000),
   COOKIE_SECURE: boolish,
-  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
+  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(1200),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().min(1).default(20),
   SYNC_COMPACT_UPDATES: z.coerce.number().int().min(1).default(64),
   SYNC_MAX_UPDATE_BYTES: z.coerce.number().int().min(1024).default(1_048_576),

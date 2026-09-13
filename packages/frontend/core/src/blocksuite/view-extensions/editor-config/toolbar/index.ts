@@ -7,6 +7,7 @@ import { WorkspaceServerService } from '@affine/core/modules/cloud';
 import { EditorService } from '@affine/core/modules/editor';
 import type { EditorSettingExt } from '@affine/core/modules/editor-setting/entities/editor-setting';
 import { copyLinkToBlockStdScopeClipboard } from '@affine/core/utils/clipboard';
+import { mergeMosaicTagToolbar } from '@affine/whiteboard';
 import { I18n, i18nTime } from '@affine/i18n';
 import { track } from '@affine/track';
 import { BookmarkBlockComponent } from '@blocksuite/affine/blocks/bookmark';
@@ -1083,7 +1084,7 @@ export const createCustomToolbarExtension = (
   return [
     ToolbarModuleExtension({
       id: BlockFlavourIdentifier('custom:affine:*'),
-      config: createToolbarMoreMenuConfigV2(baseUrl),
+      config: mergeMosaicTagToolbar(createToolbarMoreMenuConfigV2(baseUrl)),
     }),
 
     ToolbarModuleExtension({

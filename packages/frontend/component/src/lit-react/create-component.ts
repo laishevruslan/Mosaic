@@ -311,9 +311,6 @@ export const createComponent = <
     if (elementRef.current === null) {
       const element = new elementClass();
       elementRef.current = element;
-      // Set Lit props before exposing the instance so connectedCallback
-      // (and any parent that reads the ref) sees `doc` / `specs`.
-      applyElementProps(element);
       if (typeof ref === 'function') {
         ref(elementRef.current);
       } else if (ref) {
@@ -321,8 +318,8 @@ export const createComponent = <
       }
     }
 
-    // Apply props and attach in one layout pass so BlockStdScope is created
-    // with the current specs before React effects read `element.std`.
+    // Apply Lit props, then attach, in one layout pass so connectedCallback
+    // sees `doc` / `specs` before React effects read `element.std`.
     React.useLayoutEffect(() => {
       const container = containerRef.current;
       const element = elementRef.current;

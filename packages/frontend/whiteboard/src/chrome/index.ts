@@ -52,6 +52,10 @@ export { stickyQuickTool } from './sticky-quick-tool';
 export { addSticky, StickyTool } from './sticky-tool';
 export { stickyToolbarExtension } from './sticky-toolbar';
 export {
+  mergeMosaicTagToolbar,
+  mosaicTagToolbarActions,
+} from './tag-toolbar';
+export {
   contrastRatio,
   darkChromeVars,
   lightChromeVars,

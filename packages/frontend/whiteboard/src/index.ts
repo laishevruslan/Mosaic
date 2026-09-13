@@ -26,6 +26,8 @@ export {
 export {
   contrastRatio,
   createStickyNoteProps,
+  mergeMosaicTagToolbar,
+  mosaicTagToolbarActions,
   MOSAIC_ACCENT,
   MOSAIC_CSS_VAR,
   MOSAIC_HIT,

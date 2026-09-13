@@ -59,6 +59,7 @@ import { mfaRoutes } from './adapters/http/mfa-routes.js';
 import { scimRoutes } from './adapters/http/scim-routes.js';
 import { observabilityPlugin } from './adapters/http/observability-plugin.js';
 import { platformRoutes } from './adapters/http/platform-routes.js';
+import { isRateLimitExempt } from './adapters/http/rate-limit-allowlist.js';
 import { securityHeadersPlugin } from './adapters/http/security-headers.js';
 import { sessionPlugin } from './adapters/http/session-plugin.js';
 import { setupRoutes } from './adapters/http/setup-routes.js';
@@ -525,11 +526,7 @@ export async function buildApp(config: AppConfig, deps: AppDeps = {}) {
   await app.register(rateLimit, {
     max: config.RATE_LIMIT_MAX,
     timeWindow: '1 minute',
-    allowList: request =>
-      request.url === '/metrics' ||
-      request.url.startsWith('/health/') ||
-      request.url === '/info' ||
-      request.url.startsWith('/socket.io'),
+    allowList: request => isRateLimitExempt(request.method, request.url),
     errorResponseBuilder: () => errors.tooManyRequests(),
   });
 
