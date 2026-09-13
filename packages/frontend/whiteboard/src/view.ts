@@ -9,6 +9,8 @@ import { chartWidget } from './blocks/chart';
 import { helloWidget } from './blocks/hello';
 import { recordCardWidget } from './blocks/record-card';
 import { sketchWidget } from './blocks/sketch';
+import { boardInspectorWidget } from './chrome/inspector-host';
+import { boardPanelWidget } from './chrome/panel-host';
 import { stickyQuickTool } from './chrome/sticky-quick-tool';
 import { StickyTool } from './chrome/sticky-tool';
 import { stickyToolbarExtension } from './chrome/sticky-toolbar';
@@ -103,6 +105,8 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
         context.register(stickyToolbarExtension);
         context.register(tagToolbarExtension);
         context.register(tagChipsWidget);
+        context.register(boardPanelWidget);
+        context.register(boardInspectorWidget);
       }
       if (options?.enablePerfHud && typeof document !== 'undefined') {
         queueMicrotask(() => {

@@ -11,6 +11,10 @@ export const MOSAIC_ZOOM_CLUSTER_HEIGHT = 40;
 export const MOSAIC_ZOOM_CLUSTER_WIDTH = 168;
 export const MOSAIC_SELECTION_BAR_HEIGHT = 36;
 export const MOSAIC_RAIL_ZOOM_GAP = 8;
+/** Dock width for MosaicBoardPanelHost (plan 280–320). */
+export const MOSAIC_BOARD_PANEL_WIDTH = 300;
+/** Right inspector dock (same recipe as the left panel). */
+export const MOSAIC_BOARD_INSPECTOR_WIDTH = 300;
 
 export const MOSAIC_WORKSHOP_CHROME_ATTR = 'data-mosaic-workshop-chrome';
 export const MOSAIC_WORKSHOP_LAYOUT_ATTR = 'data-mosaic-layout';
@@ -80,6 +84,29 @@ export function rectsOverlap(
     b.x + b.w + gap <= a.x ||
     a.y + a.h + gap <= b.y ||
     b.y + b.h + gap <= a.y
+  );
+}
+
+/** Left offset of the workshop app dock so it does not cover the rail. */
+export function boardPanelLeft(rail: boolean, inset = MOSAIC_CHROME_INSET) {
+  return rail ? inset + MOSAIC_RAIL_WIDTH + MOSAIC_RAIL_ZOOM_GAP : inset;
+}
+
+/** Right inset of the selection-driven inspector dock. */
+export function boardInspectorRight(inset = MOSAIC_CHROME_INSET) {
+  return inset;
+}
+
+export function workshopRailFromElement(el: Element | null): boolean {
+  if (!el) return false;
+  const viewport =
+    el.closest('.affine-edgeless-viewport') ??
+    (el instanceof HTMLElement
+      ? el.querySelector('.affine-edgeless-viewport')
+      : null);
+  return (
+    viewport?.getAttribute(MOSAIC_WORKSHOP_CHROME_ATTR) ===
+    ('rail' satisfies MosaicWorkshopChromeMode)
   );
 }
 

@@ -17,6 +17,7 @@ const defaultEmbedLinkedDocBlockProps: EmbedLinkedDocBlockProps = {
 
   footnoteIdentifier: null,
   tags: undefined,
+  mosaicMeta: undefined,
 };
 
 export const EmbedLinkedDocBlockSchema = createEmbedBlockSchema({

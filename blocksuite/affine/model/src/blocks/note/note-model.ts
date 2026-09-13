@@ -25,6 +25,7 @@ import {
   StrokeStyleSchema,
 } from '../../consts/note';
 import { type Color, ColorSchema, DefaultTheme } from '../../themes';
+import type { BlockMeta } from '../../utils/types';
 
 export const NoteZodSchema = z
   .object({
@@ -71,6 +72,11 @@ export const NoteBlockSchema = defineBlockSchema({
     },
     comments: undefined,
     tags: undefined,
+    mosaicMeta: undefined,
+    'meta:createdAt': undefined,
+    'meta:createdBy': undefined,
+    'meta:updatedAt': undefined,
+    'meta:updatedBy': undefined,
   }),
   metadata: {
     version: 1,
@@ -98,6 +104,8 @@ export type NoteProps = {
    * Workspace tag ids (WC3). Omitted from last-props / NoteZodSchema.
    */
   tags?: string[];
+  /** Item metadata (WC4). JSON-compatible, not last-props. */
+  mosaicMeta?: Record<string, unknown>;
   /**
    * @deprecated
    * use `displayMode` instead
@@ -107,7 +115,8 @@ export type NoteProps = {
    *  means the note is visible in the doc and edgeless mode
    */
   hidden: boolean;
-} & GfxCompatibleProps;
+} & GfxCompatibleProps &
+  BlockMeta;
 
 export type NoteEdgelessKind = 'note' | 'sticky';
 

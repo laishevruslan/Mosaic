@@ -18,6 +18,8 @@ import { RecordCardPreviewBlockComponent } from './blocks/record-card/record-car
 import { SketchBlockComponent } from './blocks/sketch/sketch-block';
 import { SketchEdgelessBlockComponent } from './blocks/sketch/sketch-edgeless-block';
 import { SketchPreviewBlockComponent } from './blocks/sketch/sketch-preview-block';
+import { MosaicBoardInspectorHost } from './chrome/inspector-host';
+import { MosaicBoardPanelHost } from './chrome/panel-host';
 import { MosaicStickyPalette } from './chrome/sticky-palette';
 import { MosaicStickyToolButton } from './chrome/sticky-tool-button';
 import { MosaicTagChips } from './chrome/tag-chips';
@@ -75,5 +77,11 @@ export function effects() {
   }
   if (!customElements.get('wb-tag-chips-layer')) {
     customElements.define('wb-tag-chips-layer', MosaicTagChipsLayer);
+  }
+  if (!customElements.get('wb-board-panel')) {
+    customElements.define('wb-board-panel', MosaicBoardPanelHost);
+  }
+  if (!customElements.get('wb-board-inspector')) {
+    customElements.define('wb-board-inspector', MosaicBoardInspectorHost);
   }
 }

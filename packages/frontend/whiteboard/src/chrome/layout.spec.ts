@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  boardInspectorRight,
+  boardPanelLeft,
   centeredRailRect,
+  MOSAIC_BOARD_INSPECTOR_WIDTH,
+  MOSAIC_BOARD_PANEL_WIDTH,
   MOSAIC_CHROME_INSET,
   MOSAIC_RAIL_WIDTH,
+  MOSAIC_RAIL_ZOOM_GAP,
   MOSAIC_WORKSHOP_BREAKPOINT,
   railOverlapsZoom,
   shouldUseRailLayout,
@@ -94,6 +99,19 @@ describe('mosaic workshop chrome layout', () => {
       expect(railOverlapsZoom({ viewportHeight, railHeight: 220 })).toBe(false);
     }
   );
+
+  it('docks the app panel beside the rail, 300px wide', () => {
+    expect(MOSAIC_BOARD_PANEL_WIDTH).toBe(300);
+    expect(boardPanelLeft(false)).toBe(MOSAIC_CHROME_INSET);
+    expect(boardPanelLeft(true)).toBe(
+      MOSAIC_CHROME_INSET + MOSAIC_RAIL_WIDTH + MOSAIC_RAIL_ZOOM_GAP
+    );
+  });
+
+  it('docks the inspector on the right, 300px wide', () => {
+    expect(MOSAIC_BOARD_INSPECTOR_WIDTH).toBe(300);
+    expect(boardInspectorRight()).toBe(MOSAIC_CHROME_INSET);
+  });
 
   it('keeps Mosaic teal accent and panel tokens in overlay CSS', () => {
     expect(MOSAIC_TOOLBAR_RAIL_CSS).toContain('left: 12px');

@@ -24,6 +24,7 @@ import {
 import { z } from 'zod';
 
 import { type Color, ColorSchema, DefaultTheme } from '../../themes/index.js';
+import type { BlockMeta } from '../../utils/types.js';
 
 export type FrameBlockProps = {
   title: Text;
@@ -33,7 +34,10 @@ export type FrameBlockProps = {
   comments?: Record<string, boolean>;
   /** Workspace tag ids (WC3). Not part of last-props. */
   tags?: string[];
-} & GfxCompatibleProps;
+  /** Item metadata (WC4). JSON-compatible, not last-props. */
+  mosaicMeta?: Record<string, unknown>;
+} & GfxCompatibleProps &
+  BlockMeta;
 
 export const FrameZodSchema = z
   .object({
@@ -55,6 +59,11 @@ export const FrameBlockSchema = defineBlockSchema({
     lockedBySelf: false,
     comments: undefined,
     tags: undefined,
+    mosaicMeta: undefined,
+    'meta:createdAt': undefined,
+    'meta:createdBy': undefined,
+    'meta:updatedAt': undefined,
+    'meta:updatedBy': undefined,
   }),
   metadata: {
     version: 1,

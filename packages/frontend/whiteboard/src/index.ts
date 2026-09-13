@@ -110,5 +110,12 @@ export {
   registerGfxWidget,
   type SnapshotPainter,
 } from './register-gfx-widget';
+export {
+  createMosaicBoard,
+  getMosaicBoard,
+  MOSAIC_META_MAX_BYTES,
+  type MosaicBoard,
+  type MosaicViewportState,
+} from './sdk';
 export { WhiteboardStoreExtension } from './store';
 export { WhiteboardViewExtension, type WhiteboardViewOptions } from './view';

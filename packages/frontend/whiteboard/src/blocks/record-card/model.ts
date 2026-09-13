@@ -16,6 +16,7 @@ export type RecordCardBlockProps = {
   rowId: string;
   compact: boolean;
   tags?: string[];
+  mosaicMeta?: Record<string, unknown>;
 } & GfxCommonBlockProps;
 
 export const RecordCardBlockSchema = defineBlockSchema({
@@ -31,6 +32,7 @@ export const RecordCardBlockSchema = defineBlockSchema({
     rowId: '',
     compact: false,
     tags: undefined,
+    mosaicMeta: undefined,
   }),
   metadata: {
     version: 1,

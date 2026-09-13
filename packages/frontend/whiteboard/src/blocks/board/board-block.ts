@@ -8,6 +8,7 @@ import { html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import type { Root } from 'react-dom/client';
 
+import { workshopRailFromElement } from '../../chrome/layout';
 import {
   publishWidgetEditing,
   remoteOwnsLiveEditor,
@@ -94,7 +95,11 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
   }
 
   private get showSettings() {
-    return this.selected && canEditBoardWidgets(this.std.store, this.model);
+    return (
+      this.selected &&
+      canEditBoardWidgets(this.std.store, this.model) &&
+      !workshopRailFromElement(this)
+    );
   }
 
   private canUseLive(preview = false) {
@@ -231,6 +236,10 @@ export class BoardBlockComponent extends BlockComponent<BoardBlockModel> {
         this.cardScroll = { ...this.cardScroll, [key]: offset };
       },
     };
+  }
+
+  inspectorProps(): BoardSettingsPanelProps | undefined {
+    return this.settingsProps();
   }
 
   private settingsProps(): BoardSettingsPanelProps | undefined {

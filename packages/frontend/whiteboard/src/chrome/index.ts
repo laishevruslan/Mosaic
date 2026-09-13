@@ -1,5 +1,13 @@
 export {
+  boardInspectorWidget,
+  MosaicBoardInspectorHost,
+} from './inspector-host';
+export {
+  boardInspectorRight,
+  boardPanelLeft,
   centeredRailRect,
+  MOSAIC_BOARD_INSPECTOR_WIDTH,
+  MOSAIC_BOARD_PANEL_WIDTH,
   MOSAIC_CHROME_INSET,
   MOSAIC_RAIL_WIDTH,
   MOSAIC_WORKSHOP_BREAKPOINT,
@@ -9,6 +17,7 @@ export {
   railOverlapsZoom,
   shouldUseRailLayout,
   workshopChromeMode,
+  workshopRailFromElement,
   zoomClusterRect,
 } from './layout';
 export {
@@ -26,6 +35,7 @@ export {
   mosaicStickySwatch,
   mosaicTagChip,
 } from './panel.css';
+export { boardPanelWidget, MosaicBoardPanelHost } from './panel-host';
 export {
   createStickyNoteProps,
   MOSAIC_STICKY_DEFAULT_SWATCH,

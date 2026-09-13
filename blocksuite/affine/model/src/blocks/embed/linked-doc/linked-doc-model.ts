@@ -19,6 +19,8 @@ export type EmbedLinkedDocBlockProps = {
   footnoteIdentifier: string | null;
   /** Workspace tag ids (WC3). */
   tags?: string[];
+  /** Item metadata (WC4). */
+  mosaicMeta?: Record<string, unknown>;
 } & ReferenceInfo;
 
 export class EmbedLinkedDocModel extends defineEmbedModel<EmbedLinkedDocBlockProps>(

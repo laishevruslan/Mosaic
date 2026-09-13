@@ -7,6 +7,7 @@ import { html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { Root } from 'react-dom/client';
 
+import { workshopRailFromElement } from '../../chrome/layout';
 import {
   publishWidgetEditing,
   remoteOwnsLiveEditor,
@@ -82,12 +83,17 @@ export class ChartBlockComponent extends BlockComponent<ChartBlockModel> {
     return (
       this.selected &&
       !this.preview &&
-      canEditBoardWidgets(this.std.store, this.model)
+      canEditBoardWidgets(this.std.store, this.model) &&
+      !workshopRailFromElement(this)
     );
   }
 
   private get zoom() {
     return this.std.getOptional(GfxControllerIdentifier)?.viewport.zoom ?? 1;
+  }
+
+  inspectorProps(): ChartSettingsPanelProps {
+    return this.panelProps();
   }
 
   private panelProps(): ChartSettingsPanelProps {

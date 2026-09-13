@@ -1,4 +1,4 @@
-# Workshop chrome patterns (WC0–WC3)
+# Workshop chrome patterns (WC0–WC5)
 
 Behavior we copy; UI is Mosaic tokens, not Miro HTML/CSS.
 
@@ -13,10 +13,15 @@ Behavior we copy; UI is Mosaic tokens, not Miro HTML/CSS.
 | App card           | radius 8, shadow-1, hit 36                 | Overlay on edgeless `affine:bookmark` and `affine:embed-linked-doc`. Not a new flavour.                                                                                                                                                                        |
 | Object tags        | chips max 3 + overflow                     | `tags?: string[]` on sticky/frame/bookmark/linked-doc/`wb:record-card`. Catalog is workspace `meta.properties.tags.options`. Page notes are not tagged.                                                                                                        |
 | Record card        | 280×136 pending chrome                     | Flavour `wb:record-card` (`databaseDocId`, `databaseId`, `rowId`, `compact`). Face/sync is the Kanban track. Slash lives in Content & Media and is hidden inside a sticky.                                                                                     |
+| Board panel        | 300px dock, left offset past the rail      | `wb-board-panel`. Rail on: left `12+52+8=72`. Templates: Mosaic recipes (empty / retro / 2×2 / agenda / pastel pack) plus Affine `EdgelessTemplatePanel` snapshots when core registered them. Widgets tab inserts chart/board/sketch. Hidden on mobile/fallback. |
+| Inspector          | 300px dock, right inset 12                 | `wb-board-inspector`. Selection-driven for `wb:chart\|board\|sketch`. Hosts existing React settings panels; in-widget fixed overlays stay when the flag is off. Sketch is a hint only.                                                                          |
+| mosaicMeta         | JSON, ≤ 6KB                                | Item prop on sticky/frame/bookmark/linked-doc/`wb:record-card`. Not ACL. Board-level metadata is still DocMeta. BlockMeta timestamps are on note/frame.                                                                                                         |
 
 **Slash on sticky:** hide groups `Page`, `Content & Media`, `Database`. Keep Basic / List / Align / Style (and date/actions). Headings and code in Basic are still listed.
 
-**Connectors:** gfx notes stay `connectable = true`, so sticky→frame uses the stock connector tool.
+**Connectors:** gfx notes stay `connectable = true`, so sticky→frame uses the stock connector tool. SDK `createConnector` default is curve, stroke 2, rear Arrow.
+
+**SDK:** `getMosaicBoard(std)` in `@affine/whiteboard` / `@affine/whiteboard/sdk`. No `window.miro`, no `@mirohq/*`.
 
 **Do not copy:** Miro hex (`#4262ff`, `#ffd02f`, `#ff9999`), Roobert, mirotone, `@mirohq/*` icons.
 

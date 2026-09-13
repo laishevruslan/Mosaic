@@ -713,9 +713,13 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 **WC1 (2026-09-13, не закрывает пункт выше):** left rail overlay через widget `wb-workshop-chrome` + adopted CSS на stock toolbar/zoom/selection (не fork `edgeless-toolbar.ts`). Fallback нижнего бара при флаге off / mobile / viewport ≤1200. Playwright spec 1440/1280 написан, **не гонялся**.
 
-**WC2 (2026-09-13, не закрывает пункт выше):** sticky = пресет `affine:note` (`edgeless.kind: 'sticky'`), `StickyTool` + rail button + Mosaic palette на selection bar, slash без Page/embed/Database, gfx `connectable`. Playwright sticky spec написан, **не гонялся**. Flag default false. SDK — WC4.
+**WC2 (2026-09-13, не закрывает пункт выше):** sticky = пресет `affine:note` (`edgeless.kind: 'sticky'`), `StickyTool` + rail button + Mosaic palette на selection bar, slash без Page/embed/Database, gfx `connectable`. Playwright sticky spec написан, **не гонялся**. Flag default false.
 
-**WC3 (2026-09-13, не закрывает пункт выше):** frame title 24 / empty dashed, app-card skin bookmark+linked-doc, `tags[]` + chips/picker (workspace catalog), chrome skeleton `wb:record-card` без Kanban sync. Playwright objects spec написан, **не гонялся**. Flag default false. SDK createFrame/createCard — WC4.
+**WC3 (2026-09-13, не закрывает пункт выше):** frame title 24 / empty dashed, app-card skin bookmark+linked-doc, `tags[]` + chips/picker (workspace catalog), chrome skeleton `wb:record-card` без Kanban sync. Playwright objects spec написан, **не гонялся**. Flag default false.
+
+**WC4 (2026-09-13, не закрывает пункт выше):** `mosaic.board` слой 1 в `@affine/whiteboard` `src/sdk`: viewport get/set/zoomTo/fit/lock, create sticky/frame/card/connector, item mosaicMeta ≤6KB, BlockMeta на note/frame, dock Templates/Frames (`wb-board-panel`). Playwright sdk spec написан, **не гонялся**. Flag default false.
+
+**WC5 (2026-09-13, не закрывает пункт выше):** галерея Mosaic (retro/2×2/agenda/pastel) + Affine snapshots в левом доке, insert в центр / выбранный frame, inspector справа для chart/board/sketch. Playwright templates spec написан, **не гонялся**. Flag default **false** (e2e WC1–WC4 не гонялись).
 - [ ] Kanban A+B+C (toolbar, table switch, ingest/egress, 14 templates)
 - [ ] Default-on flags после smoke e2e
 - [ ] Dual-browser Playwright whiteboard

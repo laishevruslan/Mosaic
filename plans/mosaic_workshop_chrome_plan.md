@@ -404,7 +404,7 @@ board.on('selection:change' | 'viewport:change')
 - Порядок tools: sticky — **новая** quick-кнопка (priority 95), stock Note не переставлялся.
 - Slash: прячутся Page / embed-media / Database; в Basic остаются headings, code, quote, divider, callout/latex. План формулировал «paragraph + lists».
 - Connector sticky→frame: наследуется `connectable = true`; отдельного e2e рисования коннектора нет.
-- Tags / lock chip / author на sticky — tags сделаны в WC3; lock chip / author — P2. Vote/emoji — facilitation. SDK `board.createSticky` — WC4.
+- Tags / lock chip / author на sticky — tags сделаны в WC3; lock chip / author — P2. Vote/emoji — facilitation. SDK `board.createSticky` — сделано в WC4.
 - Flag `enable_workshop_chrome` по-прежнему default **false**.
 - i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
 - Isolated `tsc` Lit tool/palette/widget (`sticky-tool.ts`, `sticky-tool-button.ts`, `sticky-palette.ts`, `sticky-toolbar.ts`, `workshop-chrome.ts`) требует полный yarn-граф `@blocksuite/*`. Preset + CSS + фикстуры проверяются отдельно.
@@ -424,7 +424,7 @@ board.on('selection:change' | 'viewport:change')
 
 - Playwright WC3 e2e **не выполнялся** (нет поднятого `@affine/web`, лимит памяти). Spec написан: flag on → sticky → `[data-testid=mosaic-tag-add]`. Базовые PNG не снимались.
 - Frame title skin — adopted CSS, не fork константы высоты в `frame-title.ts` (stock остаётся 22px при флаге off).
-- Empty-frame templates (retro / 2×2 / agenda) — WC5. SDK `createFrame` / `createCard` / `zoomToFrame` / `getMetadata` — WC4.
+- Empty-frame templates (retro / 2×2 / agenda) — сделано в WC5. SDK `createFrame` / `createCard` / `zoomToFrame` / `getMetadata` — сделано в WC4 (`viewport.zoomTo`, item `mosaicMeta`).
 - `wb:record-card` — только chrome: нет database face, нет row sync / ingest, empty pending UI. Схема/синк — Kanban B2, не дублируется здесь.
 - Slash record-card в группе Content & Media; на sticky slash эта группа скрыта (фильтр WC2).
 - Tag picker не использует React TagService / `@affine/core` (цикл: core уже зависит от `@affine/whiteboard`).
@@ -439,18 +439,56 @@ board.on('selection:change' | 'viewport:change')
 
 ### Фаза WC4 — Viewport / Panel / Metadata + SDK (2 недели)
 
-- [ ] `mosaic.board.viewport` фасад
-- [ ] `MosaicBoardPanelHost` (Templates + Frames)
-- [ ] `mosaicMeta` get/set
-- [ ] BlockMeta на note/frame
-- [ ] `board.ts` слой 1 + README без чужих типов в dependencies
+- [x] `mosaic.board.viewport` фасад
+- [x] `MosaicBoardPanelHost` (Templates + Frames)
+- [x] `mosaicMeta` get/set
+- [x] BlockMeta на note/frame
+- [x] `board.ts` слой 1 + README без чужих типов в dependencies
+
+**Сделано в коде (2026-09-13).** Фасад `createMosaicBoard` / `getMosaicBoard(std)` в `packages/frontend/whiteboard/src/sdk/` (export `./sdk`, без отдельного npm `@affine/whiteboard-sdk` и без `window.miro` / `@mirohq/*`). API: `createSticky` / `createFrame` / `createCard` / `createConnector`, selection, `viewport.get|set|zoomTo|fitToScreen|lock|on('change')`, `ui.openPanel|closePanel|openModal`, item `getMetadata` / `setMetadata` (JSON, ≤ 6KB), `on('selection:change' | 'viewport:change')`. Viewport `get/set` — top-left `{x,y}` = `viewportX/Y`, `set` переводит в center. Connector mode: `straight=0 / orthogonal=1 / curve=2`, stroke 2, rear Arrow — без импорта enum. Frame title в runtime оборачивается в `Text`. `mosaicMeta` на note/frame/bookmark/linked-doc/`wb:record-card`; `BlockMeta` timestamps на note/frame (и уже были на bookmark). Dock `wb-board-panel` 300px, left = inset или inset+rail+gap (72 при rail), вкладки Templates (insert empty frame + sticky) и Frames (список + `zoomTo`). Modal — overlay в том же виджете. Регистрация только при `enableWorkshopChrome` + edgeless. i18n en+ru. Фикстура `panel-fixture.tsx` + Story `Whiteboard/Chrome/Panel`. Unit: `sdk/*.spec.ts`, `layout.spec.ts` (300/72), `panel-fixture.spec.tsx`. Playwright spec: `tests/affine-local/e2e/whiteboard/workshop-chrome-sdk.spec.ts`.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Playwright WC4 e2e **не выполнялся** (нет поднятого `@affine/web`, лимит памяти). Spec написан: flag on → handle → dock + templates tab + insert-frame. Базовые PNG не снимались.
+- Templates — тонкий insert-shell заменён галереей WC5 (empty / retro / 2×2 / agenda / pastel pack + Affine snapshots).
+- Frames dock — Mosaic list + `viewport.zoomTo([id])`, не обёртка stock `affine-frame-panel` / fragment. Правый Affine frame panel не тронут.
+- `ui.openModal` — Lit overlay в `wb-board-panel`, не `@affine/component` Modal/ConfirmModal (не тянем `@affine/component` в whiteboard).
+- Нет опубликованного пакета `@affine/whiteboard-sdk`; контракт живёт в `@affine/whiteboard` `src/sdk`. PluginContext / iframe plugins — слой 2, не WC4.
+- `mosaicMeta` на gfx-примитивах (connector) — best-effort extra key в Y.Map, не `@field` на `ConnectorElementModel`.
+- Board-level `getMetadata()` без id / DocMeta mosaic map — не сделано (только item-level).
+- Widget library (chart/board/sketch) как третья вкладка панели и selection-driven inspector — WC5.
+- BlockMeta author chrome на sticky — P2.
+- Summon/follow не в этом фасаде (`enable_whiteboard_collab`).
+- Панель показывается только при rail-режиме workshop chrome (не mobile, не fallback ≤1200).
+- Flag `enable_workshop_chrome` по-прежнему default **false**.
+- i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
+- Isolated `tsc` Lit (`panel-host.ts`, `from-std.ts`, `workshop-chrome.ts`) требует полный yarn-граф `@blocksuite/*`. Чистые `sdk/types|viewport|metadata|board` + `layout.ts` проверяются отдельно. `register-gfx-widget.spec.ts` в этой среде не загружается (`Cannot find package '@blocksuite/affine/std/gfx'`).
+- Storybook не запускался (как WC0–WC3).
+- `yarn.lock` не обновлялся.
 
 ### Фаза WC5 — Template builder + inspector (2 недели)
 
-- [ ] Галерея: edgeless templates, sticker sets, empty frames, pastel packs
-- [ ] Insert в центр viewport / в выделенный frame
-- [ ] Selection-driven inspector справа для `wb:chart|board|sketch` (существующие settings panels пересадить в recipe)
+- [x] Галерея: edgeless templates, sticker sets, empty frames, pastel packs
+- [x] Insert в центр viewport / в выделенный frame
+- [x] Selection-driven inspector справа для `wb:chart|board|sketch` (существующие settings panels пересадить в recipe)
 - [ ] Flag default-on после WC1–WC4 e2e
+
+**Сделано в коде (2026-09-13).** Галерея Mosaic в левом `wb-board-panel`: empty frame, retro 3-up, 2×2, agenda, pastel pack (6 swatches), sticky; вкладка Widgets вставляет `wb:chart|board|sketch` через `board.createWidget`. Insert — viewport center или в единственный выделенный frame (`insertMosaicTemplate`). Встроенные Affine edgeless/sticker snapshots читаются с `EdgelessTemplatePanel.templates` (регистрация по-прежнему в core `registerTemplates()`, без зависимости `@affine/templates` в whiteboard) и вставляются `createTemplateJob`. Inspector `wb-board-inspector` справа 300px: при выделении chart/board монтирует существующие React settings; sketch — hint. При rail chrome in-widget `position:fixed` settings скрыты (`workshopRailFromElement`). i18n en+ru. Фикстуры `panel-fixture` / `inspector-fixture` + Stories. Unit: `templates-catalog.spec.ts`, `templates-insert.spec.ts`, `inspector-flavours.spec.ts`, `inspector-fixture.spec.tsx`. Playwright spec: `workshop-chrome-templates.spec.ts`. Flag default **false**.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Playwright WC5 e2e **не выполнялся**. Spec написан: flag on → dock → retro + widgets tab. Базовые PNG не снимались.
+- Flag `enable_workshop_chrome` **не** default-on: e2e WC1–WC4 в этой среде не гонялись.
+- Affine snapshots в галерее только если core уже вызвал `EdgelessTemplatePanel.templates.extend`. Кап 24 на категорию. Insert Affine template использует stock `createTemplateJob` (template — справа от контента, sticker — viewport center); в выделенный frame Affine snapshot не кладётся.
+- Нет отдельного пакета `@affine/templates` в `@affine/whiteboard` (намеренно, без `yarn.lock`).
+- Inspector не переносит settings chart/board в `@affine/component`; это те же React-панели в Mosaic dock. Sketch inspector без vis/export controls (тулбар на selection bar).
+- Widget insert скрыт, если flavour нет в schema (флаг chart/board/sketch выключен).
+- Undo insert наследуется от BlockSuite captureSync вызывающей стороны; отдельной обёртки undo нет.
+- Flag по-прежнему default **false**.
+- i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
+- Isolated `tsc` Lit (`panel-host.ts`, `inspector-host.ts`, `templates-affine.ts`) требует полный yarn-граф `@blocksuite/*`. Каталог + insert + layout проверяются отдельно.
+- Storybook не запускался.
+- `yarn.lock` не обновлялся.
 
 **Оценка суммарно:** ~9–11 недель одного frontend; WC0–WC2 можно раньше facilitation demo «стикеры → kanban».
 
@@ -484,6 +522,6 @@ board.on('selection:change' | 'viewport:change')
 
 ## 12. Следующий конкретный шаг
 
-1. WC4 `mosaic.board.viewport` фасад + `MosaicBoardPanelHost` + `mosaicMeta` / BlockMeta + SDK слой 1 (`plans/mosaic_workshop_chrome_plan.md` §5.6–5.8).
-2. Снять Playwright screenshots 1440/1280 (`workshop-chrome-layout.spec.ts`) и прогнать sticky/objects specs на живом `@affine/web`.
+1. Снять Playwright screenshots 1440/1280 (`workshop-chrome-layout.spec.ts`) и прогнать sticky/objects/sdk/templates specs на живом `@affine/web`. Flag default-on — только после этих e2e.
+2. Facilitation (timer/vote/laser) поверх того же rail, если нужен workshop demo.
 3. Не подключать npm Miro «на посмотреть в бандле».

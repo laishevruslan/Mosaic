@@ -17,6 +17,7 @@ export class EdgelessClipboardRecordCardConfig extends EdgelessClipboardConfig {
       rowId,
       compact,
       tags,
+      mosaicMeta,
     } = block.props;
     return this.crud.addBlock(
       RecordCardBlockSchema.model.flavour,
@@ -29,6 +30,7 @@ export class EdgelessClipboardRecordCardConfig extends EdgelessClipboardConfig {
         rowId,
         compact,
         tags,
+        mosaicMeta,
       },
       this.surface.model.id
     );

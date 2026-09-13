@@ -6863,7 +6863,7 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.name"](): string;
     /**
-      * `Left creation rail with sticky, Mosaic chrome on frames/cards/tags, zoom, and the selection bar. Falls back to the bottom toolbar when off, on mobile, or below 1200px. Off by default.`
+      * `Left creation rail with sticky, Mosaic chrome on frames/cards/tags, zoom, selection bar, Templates/Frames/Widgets dock, and a right inspector for chart/board/sketch. Falls back to the bottom toolbar when off, on mobile, or below 1200px. Off by default.`
       */
     ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.description"](): string;
     /**
@@ -7024,6 +7024,134 @@ export function useAFFiNEI18N(): {
       * `Canvas card chrome for a Kanban row. Database sync is not wired yet.`
       */
     ["com.affine.whiteboard.chrome.record-card.slash-description"](): string;
+    /**
+      * `Board panel`
+      */
+    ["com.affine.whiteboard.chrome.panel.fixture.title"](): string;
+    /**
+      * `Board`
+      */
+    ["com.affine.whiteboard.chrome.panel.title"](): string;
+    /**
+      * `Panels`
+      */
+    ["com.affine.whiteboard.chrome.panel.open"](): string;
+    /**
+      * `Close`
+      */
+    ["com.affine.whiteboard.chrome.panel.close"](): string;
+    /**
+      * `Templates`
+      */
+    ["com.affine.whiteboard.chrome.panel.templates"](): string;
+    /**
+      * `Frames`
+      */
+    ["com.affine.whiteboard.chrome.panel.frames"](): string;
+    /**
+      * `Insert at the viewport center, or into a selected frame.`
+      */
+    ["com.affine.whiteboard.chrome.panel.templates.hint"](): string;
+    /**
+      * `Empty frame`
+      */
+    ["com.affine.whiteboard.chrome.panel.templates.empty-frame"](): string;
+    /**
+      * `Sticky`
+      */
+    ["com.affine.whiteboard.chrome.panel.templates.sticky"](): string;
+    /**
+      * `No frames on this board`
+      */
+    ["com.affine.whiteboard.chrome.panel.frames.empty"](): string;
+    /**
+      * `Widgets`
+      */
+    ["com.affine.whiteboard.chrome.panel.widgets"](): string;
+    /**
+      * `Confirm`
+      */
+    ["com.affine.whiteboard.chrome.panel.modal.confirm"](): string;
+    /**
+      * `Cancel`
+      */
+    ["com.affine.whiteboard.chrome.panel.modal.cancel"](): string;
+    /**
+      * `Frames`
+      */
+    ["com.affine.whiteboard.chrome.templates.group.frames"](): string;
+    /**
+      * `Stickers`
+      */
+    ["com.affine.whiteboard.chrome.templates.group.stickers"](): string;
+    /**
+      * `Widgets`
+      */
+    ["com.affine.whiteboard.chrome.templates.group.widgets"](): string;
+    /**
+      * `Edgeless templates`
+      */
+    ["com.affine.whiteboard.chrome.templates.group.edgeless"](): string;
+    /**
+      * `Retro`
+      */
+    ["com.affine.whiteboard.chrome.templates.retro"](): string;
+    /**
+      * `2×2`
+      */
+    ["com.affine.whiteboard.chrome.templates.two-by-two"](): string;
+    /**
+      * `Agenda`
+      */
+    ["com.affine.whiteboard.chrome.templates.agenda"](): string;
+    /**
+      * `Pastel pack`
+      */
+    ["com.affine.whiteboard.chrome.templates.pastel-pack"](): string;
+    /**
+      * `Chart`
+      */
+    ["com.affine.whiteboard.chrome.templates.widget-chart"](): string;
+    /**
+      * `Board`
+      */
+    ["com.affine.whiteboard.chrome.templates.widget-board"](): string;
+    /**
+      * `Sketch`
+      */
+    ["com.affine.whiteboard.chrome.templates.widget-sketch"](): string;
+    /**
+      * `Built-in edgeless templates appear here when the app has registered them.`
+      */
+    ["com.affine.whiteboard.chrome.templates.affine.empty"](): string;
+    /**
+      * `Widget inspector`
+      */
+    ["com.affine.whiteboard.chrome.inspector.fixture.title"](): string;
+    /**
+      * `Inspector`
+      */
+    ["com.affine.whiteboard.chrome.inspector.title"](): string;
+    /**
+      * `Chart`
+      */
+    ["com.affine.whiteboard.chrome.inspector.chart"](): string;
+    /**
+      * `Board`
+      */
+    ["com.affine.whiteboard.chrome.inspector.board"](): string;
+    /**
+      * `Link a database to edit swimlanes and WIP limits.`
+      */
+    ["com.affine.whiteboard.chrome.inspector.board.empty"](): string;
+    /**
+      * `Sketch`
+      */
+    ["com.affine.whiteboard.chrome.inspector.sketch"](): string;
+    /**
+      * `Draw on the canvas. Toolbar actions stay on the selection bar.`
+      */
+    ["com.affine.whiteboard.chrome.inspector.sketch.hint"](): string;
     /**
       * `Follow {{name}}`
       */

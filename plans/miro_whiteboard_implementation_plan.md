@@ -711,6 +711,8 @@ Miro выигрывает экосистемой. У AFFiNE в README до си�
 
 **Слой 1 — публичный typed SDK (`@affine/whiteboard-sdk`).**
 
+**Статус WC4 (2026-09-13):** `mosaic.board.*` (create sticky/frame/card/connector, viewport, panel/modal, item metadata) реализован в `@affine/whiteboard` `src/sdk` (export `./sdk`). Отдельный npm `@affine/whiteboard-sdk`, PluginContext и iframe слой 2 — не сделаны.
+
 ```ts
 interface WhiteboardPlugin {
   manifest: { id, name, version, permissions[] }
