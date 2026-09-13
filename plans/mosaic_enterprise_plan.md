@@ -708,6 +708,10 @@ Audit: `billing.checkout`, `billing.subscription_change`, `license.install`, `qu
 
 - [ ] Timer, vote, laser, lock, summon, private, presentation
 - [ ] Workshop chrome WC0–WC2: Mosaic-токены, left creation rail, sticky preset (`plans/mosaic_workshop_chrome_plan.md`)
+
+**WC0 (2026-09-13, не закрывает пункт выше):** токены и recipes в `packages/frontend/whiteboard/src/chrome/` (акцент `#0d7377`, hit 32/36, sticky light/dark, contrast ≥ 4.5:1, флаг `enable_workshop_chrome` default false).
+
+**WC1 (2026-09-13, не закрывает пункт выше):** left rail overlay через widget `wb-workshop-chrome` + adopted CSS на stock toolbar/zoom/selection (не fork `edgeless-toolbar.ts`). Fallback нижнего бара при флаге off / mobile / viewport ≤1200. Playwright spec 1440/1280 написан, **не гонялся**. Sticky preset — WC2.
 - [ ] Kanban A+B+C (toolbar, table switch, ingest/egress, 14 templates)
 - [ ] Default-on flags после smoke e2e
 - [ ] Dual-browser Playwright whiteboard

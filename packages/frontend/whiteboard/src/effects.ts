@@ -1,3 +1,5 @@
+import './chrome/tokens.css';
+
 import { BoardBlockComponent } from './blocks/board/board-block';
 import { BoardEdgelessBlockComponent } from './blocks/board/board-edgeless-block';
 import { BoardPreviewBlockComponent } from './blocks/board/board-preview-block';
@@ -10,6 +12,7 @@ import { HelloPreviewBlockComponent } from './blocks/hello/hello-preview-block';
 import { SketchBlockComponent } from './blocks/sketch/sketch-block';
 import { SketchEdgelessBlockComponent } from './blocks/sketch/sketch-edgeless-block';
 import { SketchPreviewBlockComponent } from './blocks/sketch/sketch-preview-block';
+import { MosaicWorkshopChromeWidget } from './chrome/workshop-chrome';
 import { WhiteboardPresenceBar } from './collab/presence-bar';
 import { WhiteboardPerfHud } from './perf/hud';
 
@@ -34,5 +37,8 @@ export function effects() {
   }
   if (!customElements.get('wb-presence-bar')) {
     customElements.define('wb-presence-bar', WhiteboardPresenceBar);
+  }
+  if (!customElements.get('wb-workshop-chrome')) {
+    customElements.define('wb-workshop-chrome', MosaicWorkshopChromeWidget);
   }
 }

@@ -8,6 +8,7 @@ import { boardWidget } from './blocks/board';
 import { chartWidget } from './blocks/chart';
 import { helloWidget } from './blocks/hello';
 import { sketchWidget } from './blocks/sketch';
+import { workshopChromeWidget } from './chrome/workshop-chrome';
 import { WhiteboardCollabLayerExtension } from './collab/collab-layer';
 import { effects } from './effects';
 import { WhiteboardL0LayerExtension } from './perf/l0-layer';
@@ -30,6 +31,7 @@ const optionsSchema = z.object({
   enablePerfHud: z.boolean().optional(),
   enableL0Layer: z.boolean().optional(),
   enableCollab: z.boolean().optional(),
+  enableWorkshopChrome: z.boolean().optional(),
   reactToLit: z.custom<WhiteboardReactToLit>().optional(),
 });
 
@@ -86,6 +88,9 @@ export class WhiteboardViewExtension extends ViewExtensionProvider<WhiteboardVie
       }
       if (options?.enableCollab) {
         context.register(WhiteboardCollabLayerExtension);
+      }
+      if (options?.enableWorkshopChrome) {
+        context.register(workshopChromeWidget);
       }
       if (options?.enablePerfHud && typeof document !== 'undefined') {
         queueMicrotask(() => {

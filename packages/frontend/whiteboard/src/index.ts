@@ -19,6 +19,24 @@ export {
   sketchWidget,
 } from './blocks/sketch';
 export {
+  contrastRatio,
+  MOSAIC_ACCENT,
+  MOSAIC_CSS_VAR,
+  MOSAIC_HIT,
+  MOSAIC_HIT_COMFORTABLE,
+  MOSAIC_ICON,
+  MOSAIC_STICKY_SWATCH_IDS,
+  MOSAIC_TEXT_CONTRAST_AA,
+  mosaicChromeIcon,
+  mosaicChromeIconButton,
+  mosaicChromePanel,
+  mosaicStickySwatch,
+  type MosaicStickySwatchId,
+  shouldUseRailLayout,
+  stickyTextContrast,
+  workshopChromeMode,
+} from './chrome';
+export {
   ATTENTION_TTL_MS,
   canFollow,
   isRemoteEditing,

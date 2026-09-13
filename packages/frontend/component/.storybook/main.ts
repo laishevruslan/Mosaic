@@ -6,7 +6,10 @@ import swc from 'unplugin-swc';
 import { mergeConfig } from 'vite';
 
 export default {
-  stories: ['../src/ui/**/*.@(mdx|stories.@(js|jsx|ts|tsx))'],
+  stories: [
+    '../src/ui/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',
+    '../../whiteboard/src/chrome/**/*.stories.@(js|jsx|ts|tsx)',
+  ],
 
   addons: [],
 

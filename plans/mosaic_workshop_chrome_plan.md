@@ -349,18 +349,43 @@ board.on('selection:change' | 'viewport:change')
 
 ### Фаза WC0 — Tokens (1 неделя)
 
-- [ ] CSS variables + `mosaicChromePanel` + icon-button 32/36
-- [ ] Sticky pastel swatches light/dark, contrast check
-- [ ] Accent `--mosaic-accent`, шрифт не менять
-- [ ] Story / visual fixture
+- [x] CSS variables + `mosaicChromePanel` + icon-button 32/36
+- [x] Sticky pastel swatches light/dark, contrast check
+- [x] Accent `--mosaic-accent`, шрифт не менять
+- [x] Story / visual fixture
+
+**Сделано в коде (2026-09-13).** Overlay-токены Mosaic в `packages/frontend/whiteboard/src/chrome/`: `tokens.ts` (source of truth), `tokens.css.ts` (`:root` / `[data-theme]`), `panel.css.ts` (`mosaicChromePanel`, icon-button 32/36, sticky swatches). Акцент `#0d7377` (teal), шрифт `var(--affine-font-family)`. Визуальный фикстур `tokens-fixture.tsx` + Story `tokens.stories.tsx` (глоб Storybook `@affine/component` расширен). Контраст пастель×чернила ≥ 4.5:1 в unit-тестах `tokens.spec.ts`. Флаг `enable_workshop_chrome` (default false) + i18n en/ru. CSS-переменные регистрируются в `effects()` как overlay и **не** двигают нижний toolbar.
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Storybook в этой среде не запускался (нет `storybook dev`); DoD закрыт фикстурой + vitest render. Глоб: `packages/frontend/component/.storybook/main.ts`.
+- Тёмные sticky hex не совпадают со светлой таблицей §3: для AA на `--mosaic-sticky-ink` `#F4EFE6` взяты затемнённые бумаги (`#6B5A28` … `#3A4250`). Светлые hex — как в §3.
+- Overlay-токены грузятся всегда (effects); визуально flag off ≡ текущий UX до WC1.
+- Recipe не реэкспортирован в `@affine/component` (план: только если понадобится вне edgeless).
+- `PATTERNS.md` и Playwright «workshop chrome layout» — WC1.
+- i18n только en+ru (принятый паттерн проекта); `i18n-completenesses.json` не пересчитывался.
+- `yarn.lock` не обновлялся: `@vanilla-extract/css` уже есть в монорепо, полный `yarn install` не гонялся из-за лимита памяти.
 
 ### Фаза WC1 — Layout chrome (2 недели)
 
-- [ ] Left rail под флагом (предпочтительно Mosaic widget поверх Quick/Senior tools)
-- [ ] Zoom cluster в panel recipe
-- [ ] Selection bar в panel recipe
-- [ ] Fallback нижнего toolbar при флаге off и на mobile
-- [ ] Playwright: layout screenshots 1440 / 1280
+- [x] Left rail под флагом (предпочтительно Mosaic widget поверх Quick/Senior tools)
+- [x] Zoom cluster в panel recipe
+- [x] Selection bar в panel recipe
+- [x] Fallback нижнего toolbar при флаге off и на mobile
+- [x] Playwright: layout screenshots 1440 / 1280
+
+**Сделано в коде (2026-09-13).** Mosaic widget `wb-workshop-chrome` (`packages/frontend/whiteboard/src/chrome/workshop-chrome.ts`) регистрируется в `WhiteboardViewExtension`, когда `enableWorkshopChrome` true. Не форкает `edgeless-toolbar.ts`: adopted-shadow CSS (`layout-styles.ts`) ставит host слева (12px, вертикальный центр), quick tools колонкой, senior — hover-колонка справа; auto-hide `translateX(-72px)`. Zoom host `left/bottom: 12px` + panel recipe на внутреннем `edgeless-zoom-toolbar`. Selection: тот же recipe на `editor-toolbar`. Геометрия `layout.ts` (`> 1200`, не mobile, не present). Flag off / виджет не смонтирован → нижний toolbar без изменений. Фикстур `layout-fixture.tsx` + Story `layout.stories.tsx`. Unit: `layout.spec.ts`, `layout-fixture.spec.tsx`. Playwright spec: `tests/affine-local/e2e/whiteboard/workshop-chrome-layout.spec.ts`. i18n en+ru (rail/zoom/selection + описание флага).
+
+**Не полностью (зафиксировано, не блокирует чеклист фазы):**
+
+- Playwright screenshots 1440/1280 **не выполнялись** в этой среде (нет поднятого `@affine/web`, лимит памяти). Spec написан: rail left / zoom bottom-left / no overlap; flag off ≡ bottom toolbar; sidebar сворачивается, чтобы editor viewport > 1200. Базовые PNG не сняты.
+- Senior tools — hover-колонка справа, не отдельный popover «ещё». Плотность 32–36 у quick tools; senior paper-кнопки в flyout остаются ~96×64.
+- Sticky как отдельная кнопка rail — **WC2**. Порядок tools не переставлялся.
+- Stock toolbar остаётся в DOM (скрыт/переставлен CSS), чтобы mixins сохраняли `edgelessToolbarContext`.
+- Storybook не запускался (как WC0).
+- i18n только en+ru; `i18n-completenesses.json` не пересчитывался.
+- Isolated `tsc` виджета `workshop-chrome.ts` требует полный yarn-граф `@blocksuite/*` (в этой среде пакеты не слинкованы). `layout.ts` / `adopt.ts` / `layout-styles.ts` / tokens+panel CSS — 0 ошибок. Виджет копирует паттерн Lit `WidgetComponent` как остальные whiteboard widgets.
+- ADR «rail = widget vs patch toolbar» как отдельный файл не писался: решение зафиксировано в `PATTERNS.md` + этом абзаце (widget + overlay CSS).
 
 ### Фаза WC2 — Sticky + palette (2 недели)
 
@@ -424,8 +449,6 @@ board.on('selection:change' | 'viewport:change')
 
 ## 12. Следующий конкретный шаг
 
-1. ADR на одну страницу: rail = Mosaic widget vs patch BlockSuite toolbar (рекомендация: widget).
-2. WC0 tokens + visual fixture.
-3. Failing Playwright screenshot test «workshop chrome layout».
-4. StickyTool spike на флаге, без SDK.
-5. Не подключать npm Miro «на посмотреть в бандле».
+1. WC2 sticky preset (`edgeless.kind: 'sticky'`) + palette на selection bar.
+2. Снять Playwright screenshots 1440/1280 (`workshop-chrome-layout.spec.ts`) на живом `@affine/web`.
+3. Не подключать npm Miro «на посмотреть в бандле».

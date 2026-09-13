@@ -6859,6 +6859,98 @@ export function useAFFiNEI18N(): {
       */
     ["com.affine.settings.workspace.experimental-features.enable-whiteboard-collab.description"](): string;
     /**
+      * `Workshop chrome`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.name"](): string;
+    /**
+      * `Left creation rail, Mosaic panel chrome on zoom and the selection bar. Falls back to the bottom toolbar when off, on mobile, or below 1200px. Off by default.`
+      */
+    ["com.affine.settings.workspace.experimental-features.enable-workshop-chrome.description"](): string;
+    /**
+      * `Workshop chrome tokens`
+      */
+    ["com.affine.whiteboard.chrome.fixture.title"](): string;
+    /**
+      * `Light`
+      */
+    ["com.affine.whiteboard.chrome.fixture.theme-light"](): string;
+    /**
+      * `Dark`
+      */
+    ["com.affine.whiteboard.chrome.fixture.theme-dark"](): string;
+    /**
+      * `Panel`
+      */
+    ["com.affine.whiteboard.chrome.fixture.panel"](): string;
+    /**
+      * `Icon button 32`
+      */
+    ["com.affine.whiteboard.chrome.fixture.icon-32"](): string;
+    /**
+      * `Icon button 36`
+      */
+    ["com.affine.whiteboard.chrome.fixture.icon-36"](): string;
+    /**
+      * `Sticky swatches`
+      */
+    ["com.affine.whiteboard.chrome.fixture.swatches"](): string;
+    /**
+      * `Butter`
+      */
+    ["com.affine.whiteboard.chrome.sticky.butter"](): string;
+    /**
+      * `Peach`
+      */
+    ["com.affine.whiteboard.chrome.sticky.peach"](): string;
+    /**
+      * `Blush`
+      */
+    ["com.affine.whiteboard.chrome.sticky.blush"](): string;
+    /**
+      * `Mint`
+      */
+    ["com.affine.whiteboard.chrome.sticky.mint"](): string;
+    /**
+      * `Lilac`
+      */
+    ["com.affine.whiteboard.chrome.sticky.lilac"](): string;
+    /**
+      * `Fog`
+      */
+    ["com.affine.whiteboard.chrome.sticky.fog"](): string;
+    /**
+      * `Workshop chrome layout`
+      */
+    ["com.affine.whiteboard.chrome.layout.title"](): string;
+    /**
+      * `Creation tools`
+      */
+    ["com.affine.whiteboard.chrome.rail.label"](): string;
+    /**
+      * `Select`
+      */
+    ["com.affine.whiteboard.chrome.rail.select"](): string;
+    /**
+      * `Frame`
+      */
+    ["com.affine.whiteboard.chrome.rail.frame"](): string;
+    /**
+      * `Connector`
+      */
+    ["com.affine.whiteboard.chrome.rail.connector"](): string;
+    /**
+      * `More tools`
+      */
+    ["com.affine.whiteboard.chrome.rail.more"](): string;
+    /**
+      * `Zoom`
+      */
+    ["com.affine.whiteboard.chrome.zoom.label"](): string;
+    /**
+      * `Selection`
+      */
+    ["com.affine.whiteboard.chrome.selection.label"](): string;
+    /**
       * `Follow {{name}}`
       */
     ["com.affine.whiteboard.collab.follow"](options: {

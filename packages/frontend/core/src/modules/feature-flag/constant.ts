@@ -383,6 +383,16 @@ export const AFFINE_FLAGS = {
     configurable: true,
     defaultState: false,
   },
+  enable_workshop_chrome: {
+    category: 'blocksuite',
+    bsFlag: 'enable_workshop_chrome',
+    displayName:
+      'com.affine.settings.workspace.experimental-features.enable-workshop-chrome.name',
+    description:
+      'com.affine.settings.workspace.experimental-features.enable-workshop-chrome.description',
+    configurable: true,
+    defaultState: false,
+  },
 } satisfies { [key in string]: FlagInfo };
 
 // oxlint-disable-next-line no-redeclare
