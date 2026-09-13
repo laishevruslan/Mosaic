@@ -1,36 +1,17 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type postgres from 'postgres';
 
 import {
   BLOBS_MIGRATION_SQL,
   DOCS_MIGRATION_SQL,
+  E0_MIGRATION_SQL,
+  E2_MIGRATION_SQL,
+  E3_MIGRATION_SQL,
+  E4_MIGRATION_SQL,
   IDENTITY_MIGRATION_SQL,
   JOBS_MIGRATION_SQL,
   MEMBERS_MIGRATION_SQL,
   PLATFORM_MIGRATION_SQL,
 } from './migrations.js';
-
-const e0Sql = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'migrations', '007_e0.sql'),
-  'utf8'
-);
-
-const e2Sql = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'migrations', '008_e2.sql'),
-  'utf8'
-);
-
-const e3Sql = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'migrations', '009_e3.sql'),
-  'utf8'
-);
-
-const e4Sql = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'migrations', '010_e4.sql'),
-  'utf8'
-);
 
 const MIGRATIONS = [
   { id: '001_identity', sql: IDENTITY_MIGRATION_SQL },
@@ -39,10 +20,10 @@ const MIGRATIONS = [
   { id: '004_members', sql: MEMBERS_MIGRATION_SQL },
   { id: '005_platform', sql: PLATFORM_MIGRATION_SQL },
   { id: '006_jobs', sql: JOBS_MIGRATION_SQL },
-  { id: '007_e0', sql: e0Sql },
-  { id: '008_e2', sql: e2Sql },
-  { id: '009_e3', sql: e3Sql },
-  { id: '010_e4', sql: e4Sql },
+  { id: '007_e0', sql: E0_MIGRATION_SQL },
+  { id: '008_e2', sql: E2_MIGRATION_SQL },
+  { id: '009_e3', sql: E3_MIGRATION_SQL },
+  { id: '010_e4', sql: E4_MIGRATION_SQL },
 ];
 
 export async function applyMigrations(sql: postgres.Sql): Promise<void> {

@@ -5,7 +5,7 @@ name: mosaic
 
 services:
   mosaic:    
-    image: ghcr.io/laishevruslan/mosaic-aio:main-e1becd086a3da2b2b265b548cc11ed59601c8bfc
+    image: ghcr.io/laishevruslan/mosaic-aio:main-bfeb4564c1b9b71b8b1c75c038826bcf25f1a6d0
     container_name: mosaic_server
     ports:
       - '${PORT:-3010}:3010'

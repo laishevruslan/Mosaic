@@ -1,4 +1,3 @@
-export const E0_MIGRATION_SQL = `
 ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS org_id UUID;
@@ -139,4 +138,3 @@ CREATE TABLE IF NOT EXISTS mfa_challenges (
 );
 
 CREATE INDEX IF NOT EXISTS mfa_challenges_expires_idx ON mfa_challenges (expires_at);
-`;

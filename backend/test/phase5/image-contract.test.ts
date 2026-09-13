@@ -78,4 +78,14 @@ describe('Phase 5 — production images without EE', () => {
     const ee = read('docker-compose.ee.yml');
     expect(ee).toContain('self-host-predeploy');
   });
+
+  it('embeds SQL migrations in compiled JS so Docker dist does not need loose .sql files', () => {
+    const migrate = read('backend/src/adapters/persistence/migrate.ts');
+    expect(migrate).not.toMatch(/readFileSync/);
+    expect(migrate).toContain('E0_MIGRATION_SQL');
+    expect(migrate).toContain('E4_MIGRATION_SQL');
+    const bundled = read('backend/src/adapters/persistence/migrations.ts');
+    expect(bundled).toContain('CREATE TABLE IF NOT EXISTS search_documents');
+    expect(bundled).toContain('CREATE TABLE IF NOT EXISTS organizations');
+  });
 });
